@@ -1,0 +1,352 @@
+// DU Mission Runner — Best q/hr (baked only) + explicit pickup/deliver cargo + volume capacity warning
+const PLANETS = ["Alioth","Thades","Madis","Talemai","Teoma","Sinnen","Sicari","Jago"];
+const distances = {"Alioth": {"Alioth": 0.0, "Thades": 155.6, "Madis": 143.1, "Talemai": 286.6, "Teoma": 488.1, "Sinnen": 439.1, "Sicari": 394.9, "Jago": 475.3}, "Thades": {"Alioth": 155.6, "Thades": 0.0, "Madis": 83.1, "Talemai": 308.8, "Teoma": 338.8, "Sinnen": 339.1, "Sicari": 296.9, "Jago": 616.9}, "Madis": {"Alioth": 143.1, "Thades": 83.1, "Madis": 0.0, "Talemai": 225.7, "Teoma": 355.1, "Sinnen": 358.2, "Sicari": 315.5, "Jago": 560.5}, "Talemai": {"Alioth": 286.6, "Thades": 308.8, "Madis": 225.7, "Talemai": 0.0, "Teoma": 470.6, "Sinnen": 479.1, "Sicari": 442.6, "Jago": 458.5}, "Teoma": {"Alioth": 488.1, "Thades": 338.8, "Madis": 355.1, "Talemai": 470.6, "Teoma": 0.0, "Sinnen": 339.5, "Sicari": 330.0, "Jago": 899.8}, "Sinnen": {"Alioth": 439.1, "Thades": 339.1, "Madis": 358.2, "Talemai": 479.1, "Teoma": 339.5, "Sinnen": 0.0, "Sicari": 44.2, "Jago": 828.4}, "Sicari": {"Alioth": 394.9, "Thades": 296.9, "Madis": 315.5, "Talemai": 442.6, "Teoma": 330.0, "Sinnen": 44.2, "Jago": 788.8}, "Jago": {"Alioth": 475.3, "Thades": 616.9, "Madis": 560.5, "Talemai": 458.5, "Teoma": 899.8, "Sinnen": 828.4, "Sicari": 788.8, "Jago": 0.0}};
+const BAKED_MISSIONS = [{"name": "Madis Core Samples", "pickupPlanet": "Madis", "dropPlanet": "Alioth", "reward": 900000.0, "collateral": 180000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "High Temperature Rock", "pickupPlanet": "Madis", "dropPlanet": "Thades", "reward": 670000.0, "collateral": 134000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Vanadium Shipment", "pickupPlanet": "Madis", "dropPlanet": "Sicari", "reward": 6000000.0, "collateral": 1200000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Advanced Agile Railgun Shipment", "pickupPlanet": "Madis", "dropPlanet": "Alioth", "reward": 2000000.0, "collateral": 400000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Kergon-X1 fuel Shipment", "pickupPlanet": "Madis", "dropPlanet": "Thades", "reward": 1800000.0, "collateral": 360000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Carbon Scrap Shipment", "pickupPlanet": "Madis", "dropPlanet": "Teoma", "reward": 3800000.0, "collateral": 760000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Glass Panel Shipment", "pickupPlanet": "Madis", "dropPlanet": "Jago", "reward": 5500000.0, "collateral": 1100000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Concrete Shipment", "pickupPlanet": "Madis", "dropPlanet": "Teoma", "reward": 6400000.0, "collateral": 1280000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Iron Shipment", "pickupPlanet": "Madis", "dropPlanet": "Jago", "reward": 8100000.0, "collateral": 1620000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Anti-Gravity Generator L", "pickupPlanet": "Madis", "dropPlanet": "Talemai", "reward": 2700000.0, "collateral": 540000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Nickel Scrap Shipment", "pickupPlanet": "Madis", "dropPlanet": "Sicari", "reward": 3500000.0, "collateral": 700000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Radar equipment", "pickupPlanet": "Alioth", "dropPlanet": "Thades", "reward": 950000.0, "collateral": 190000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Computer Parts", "pickupPlanet": "Alioth", "dropPlanet": "Madis", "reward": 900000.0, "collateral": 180000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Glossy Carbon Shipment", "pickupPlanet": "Alioth", "dropPlanet": "Thades", "reward": 2100000.0, "collateral": 420000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Firework Fireball Blue Shipment ", "pickupPlanet": "Alioth", "dropPlanet": "Madis", "reward": 2000000.0, "collateral": 400000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Sliding Door Shipment", "pickupPlanet": "Alioth", "dropPlanet": "Teoma", "reward": 4900000.0, "collateral": 980000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Black Pattern Wood Shipment", "pickupPlanet": "Alioth", "dropPlanet": "Jago", "reward": 4800000.0, "collateral": 960000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Stained Gray Pattern Wood Shipment", "pickupPlanet": "Alioth", "dropPlanet": "Teoma", "reward": 7500000.0, "collateral": 1500000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Glossy Dark Purple Plastic Shipment", "pickupPlanet": "Alioth", "dropPlanet": "Jago", "reward": 7400000.0, "collateral": 1480000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Advanced Reinforced Frame L", "pickupPlanet": "Alioth", "dropPlanet": "Talemai", "reward": 3200000.0, "collateral": 640000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Warp Cell Delivery", "pickupPlanet": "Alioth", "dropPlanet": "Sinnen", "reward": 4100000.0, "collateral": 820000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Industry Unit Parts", "pickupPlanet": "Thades", "dropPlanet": "Alioth", "reward": 950000.0, "collateral": 190000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "IDEA Furniture", "pickupPlanet": "Thades", "dropPlanet": "Madis", "reward": 670000.0, "collateral": 134000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "XS Gas Cylinder Shipment", "pickupPlanet": "Thades", "dropPlanet": "Alioth", "reward": 2100000.0, "collateral": 420000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Screws Shipment", "pickupPlanet": "Thades", "dropPlanet": "Madis", "reward": 1800000.0, "collateral": 360000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Blue Pattern Marble Shipment", "pickupPlanet": "Thades", "dropPlanet": "Teoma", "reward": 3700000.0, "collateral": 740000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Magnets Shipment", "pickupPlanet": "Thades", "dropPlanet": "Jago", "reward": 6000000.0, "collateral": 1200000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Power Systems Shipment", "pickupPlanet": "Thades", "dropPlanet": "Teoma", "reward": 6200000.0, "collateral": 1240000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "XS Screen Shipment", "pickupPlanet": "Thades", "dropPlanet": "Jago", "reward": 8600000.0, "collateral": 1720000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Uncommon Ore Scanner L ", "pickupPlanet": "Thades", "dropPlanet": "Talemai", "reward": 3400000.0, "collateral": 680000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Laser Thermic Ammo", "pickupPlanet": "Thades", "dropPlanet": "Sicari", "reward": 5900000.0, "collateral": 1180000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Fluorine Shipment", "pickupPlanet": "Talemai", "dropPlanet": "Jago", "reward": 4700000.0, "collateral": 940000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Anti-Gravity Parts", "pickupPlanet": "Talemai", "dropPlanet": "Madis", "reward": 5300000.0, "collateral": 1060000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Retro-Rockets Brake M", "pickupPlanet": "Talemai", "dropPlanet": "Alioth", "reward": 3200000.0, "collateral": 640000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Catalyst 4", "pickupPlanet": "Talemai", "dropPlanet": "Thades", "reward": 3400000.0, "collateral": 680000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Metal Throne S", "pickupPlanet": "Talemai", "dropPlanet": "Teoma", "reward": 4800000.0, "collateral": 960000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Spaceship Hologram L", "pickupPlanet": "Talemai", "dropPlanet": "Alioth", "reward": 5800000.0, "collateral": 1160000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Territory Scanner", "pickupPlanet": "Talemai", "dropPlanet": "Teoma", "reward": 7300000.0, "collateral": 1460000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Basic Vertical Booster L", "pickupPlanet": "Talemai", "dropPlanet": "Jago", "reward": 7200000.0, "collateral": 1440000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Uncommon Quantum Cores Shipment", "pickupPlanet": "Talemai", "dropPlanet": "Sicari", "reward": 7100000.0, "collateral": 1420000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Blank Clones", "pickupPlanet": "Sicari", "dropPlanet": "Teoma", "reward": 3600000.0, "collateral": 720000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Warp Beacon Parts", "pickupPlanet": "Sicari", "dropPlanet": "Talemai", "reward": 7100000.0, "collateral": 1420000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "TI-NB Supraconductive Product Shipment", "pickupPlanet": "Sicari", "dropPlanet": "Jago", "reward": 10000000.0, "collateral": 2000000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Pure Copper Shipment", "pickupPlanet": "Sicari", "dropPlanet": "Alioth", "reward": 6700000.0, "collateral": 1340000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Large Stabilizers Shipment", "pickupPlanet": "Sicari", "dropPlanet": "Madis", "reward": 3500000.0, "collateral": 700000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Basic Gas Cylinder Shipment", "pickupPlanet": "Sicari", "dropPlanet": "Thades", "reward": 5900000.0, "collateral": 1180000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Pure Sulfur Shipment", "pickupPlanet": "Sicari", "dropPlanet": "Sinnen", "reward": 370000.0, "collateral": 74000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Cobalt Shipment", "pickupPlanet": "Sinnen", "dropPlanet": "Teoma", "reward": 3700000.0, "collateral": 740000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Construction Equipment", "pickupPlanet": "Sinnen", "dropPlanet": "Thades", "reward": 5900000.0, "collateral": 1180000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Fluoropolymere Product Shipment", "pickupPlanet": "Sinnen", "dropPlanet": "Alioth", "reward": 6700000.0, "collateral": 1340000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Pure Gold Shipment", "pickupPlanet": "Sinnen", "dropPlanet": "Madis", "reward": 6000000.0, "collateral": 1200000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "orange Carbon Panels Shipment", "pickupPlanet": "Sinnen", "dropPlanet": "Talemai", "reward": 4500000.0, "collateral": 900000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Advanced Maneuver Atmospheric Engine L Shipment", "pickupPlanet": "Sinnen", "dropPlanet": "Alioth", "reward": 6700000.0, "collateral": 1340000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Biological Matter Product Shipment", "pickupPlanet": "Sinnen", "dropPlanet": "Jago", "reward": 7500000.0, "collateral": 1500000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Lumber", "pickupPlanet": "Teoma", "dropPlanet": "Sinnen", "reward": 3700000.0, "collateral": 740000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Container Parts", "pickupPlanet": "Teoma", "dropPlanet": "Sicari", "reward": 3600000.0, "collateral": 720000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "XS Lights Shipment", "pickupPlanet": "Teoma", "dropPlanet": "Madis", "reward": 6400000.0, "collateral": 1280000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Electric Engines S Shipment", "pickupPlanet": "Teoma", "dropPlanet": "Alioth", "reward": 7500000.0, "collateral": 1500000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Aged Steel Shipment", "pickupPlanet": "Teoma", "dropPlanet": "Thades", "reward": 6200000.0, "collateral": 1240000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Sulfur Acid Product Shipment", "pickupPlanet": "Teoma", "dropPlanet": "Madis", "reward": 3800000.0, "collateral": 760000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Luminescent Icy Blue Glass Shipment", "pickupPlanet": "Teoma", "dropPlanet": "Alioth", "reward": 4900000.0, "collateral": 980000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Deco Fireplace Black Shipment", "pickupPlanet": "Teoma", "dropPlanet": "Thades", "reward": 3700000.0, "collateral": 740000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Titanium Scraps", "pickupPlanet": "Teoma", "dropPlanet": "Talemai", "reward": 7300000.0, "collateral": 1460000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Sky Lithium Panels Shipment", "pickupPlanet": "Teoma", "dropPlanet": "Sinnen", "reward": 6200000.0, "collateral": 1240000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Mining Unit Parts", "pickupPlanet": "Jago", "dropPlanet": "Talemai", "reward": 4700000.0, "collateral": 940000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Water Run Alpha", "pickupPlanet": "Jago", "dropPlanet": "Madis", "reward": 8100000.0, "collateral": 1620000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "S Missile SIlo Shipment", "pickupPlanet": "Jago", "dropPlanet": "Alioth", "reward": 7400000.0, "collateral": 1480000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Steel Column Shipment", "pickupPlanet": "Jago", "dropPlanet": "Thades", "reward": 8600000.0, "collateral": 1720000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "XS Avanced Laser Chamber Shipment", "pickupPlanet": "Jago", "dropPlanet": "Madis", "reward": 5500000.0, "collateral": 1100000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "XS Advanced Shield Generator Shipment", "pickupPlanet": "Jago", "dropPlanet": "Alioth", "reward": 4800000.0, "collateral": 960000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Aged Copper Shipment", "pickupPlanet": "Jago", "dropPlanet": "Thades", "reward": 6000000.0, "collateral": 1200000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}, {"name": "Xeron Fuel", "pickupPlanet": "Jago", "dropPlanet": "Talemai", "reward": 7200000.0, "collateral": 1440000.0, "mass_t": 1800.0, "volume_kl": 400.0, "size_class": "verylarge"}, {"name": "Cobalt Scrap Shipment", "pickupPlanet": "Jago", "dropPlanet": "Sicari", "reward": 7500000.0, "collateral": 1500000.0, "mass_t": 437.5, "volume_kl": 125.0, "size_class": "large"}];
+
+const el = (id)=>document.getElementById(id);
+const SU_TO_KM=200, SPEED=50000;
+let missions = [];            // baked dataset
+let filtered = [];            // filtered by search
+let selectedIds = new Set();  // ids of selected missions (stable per load)
+
+// ---- helpers ----
+function parseMassT(v){ if(v==null)return 0; if(typeof v==='number')return v; const s=String(v).toLowerCase(); const m=s.match(/([\d.]+)/); if(!m)return 0; const n=parseFloat(m[1]); return s.includes('kt')?n*1000:n; }
+function parseVolkL(v){ if(v==null)return 0; if(typeof v==='number')return v; const s=String(v).toLowerCase(); const m=s.match(/([\d.]+)/); if(!m)return 0; const n=parseFloat(m[1]); if(s.includes('kl'))return n; if(s.includes('l'))return n/1000; return n; }
+const SIZE_MAP={small:{mass_t:15,volume_kl:20},medium:{mass_t:87.5,volume_kl:35},large:{mass_t:437.5,volume_kl:125},verylarge:{mass_t:1800,volume_kl:400}};
+function sizeFromText(o){const hay=`${o.size||''} ${o.size_class||''} ${o.sizeClass||''} ${o.package||''} ${o.description||''} ${o.name||''}`.toLowerCase(); if(/very\s*large|verylarge|verylargestuff|verylargepackage|xl|x-large/.test(hay))return'verylarge'; if(/large|largestuff|largepackage|largepackage1/.test(hay))return'large'; if(/medium|mediumstuff|mediumpackage/.test(hay))return'medium'; if(/small|smallstuff|smallpackage|smallpackage1/.test(hay))return'small'; return null;}
+function coerceMassVol(o){ let mt=Number(o.mass_t); let vk=Number(o.volume_kl); if(!(mt>0)) mt=parseMassT(o.mass||o.massT||o.mass_t); if(!(vk>0)) vk=parseVolkL(o.volume||o.volume_kL||o.volume_kl||o.vol); if(!(mt>0)||!(vk>0)){ const sz=sizeFromText(o); if(sz&&SIZE_MAP[sz]){mt=SIZE_MAP[sz].mass_t; vk=SIZE_MAP[sz].volume_kl;}} o.mass_t=mt>0?mt:0; o.volume_kl=vk>0?vk:0; return o;}
+function fmtQ(n){ return (n||0).toLocaleString('en-US'); }
+function fmtH(h){ const hh=Math.floor(h); const mm=Math.round((h-hh)*60); return `${hh}h ${String(mm).padStart(2,'0')}m`; }
+function suBetween(a,b){ if(a===b) return 0; return distances[a]?.[b] ?? distances[b]?.[a] ?? Infinity; }
+function suToKm(x){ return x*SU_TO_KM; } function kmToH(km){ return km/SPEED; }
+
+function initUI(){
+  const start=el('startPlanet'); const end=el('endPlanet');
+  PLANETS.forEach(p=>{ const o=document.createElement('option'); o.value=o.textContent=p; start.appendChild(o); });
+  PLANETS.forEach(p=>{ const o=document.createElement('option'); o.value=o.textContent=p; end.appendChild(o); });
+  start.value="Alioth"; end.value="Alioth";
+}
+
+function hydrate(arr){ return (arr||[]).map((m,i)=> ({id:i+1, ...coerceMassVol(m)})); }
+
+function rowHTML(m){
+  return `<div class="rowItem" data-id="${m.id}">
+    <input type="checkbox" class="chk" ${selectedIds.has(m.id)?'checked':''} />
+    <div class="name">${m.name}</div>
+    <div>${m.pickupPlanet} <span class="badgeMini">→</span> ${m.dropPlanet}</div>
+    <div class="right">${fmtQ(m.reward)} q</div>
+    <div class="right">${fmtQ(m.collateral||0)} q</div>
+    <div class="right">${m.mass_t||0} t / ${m.volume_kl||0} kL</div>
+  </div>`;
+}
+
+function renderList(){
+  const box = el('missionList');
+  box.innerHTML = filtered.map(rowHTML).join("");
+  box.querySelectorAll('.rowItem').forEach(div=>{
+    const id = parseInt(div.getAttribute('data-id'), 10);
+    const chk = div.querySelector('.chk');
+    div.addEventListener('click', (e)=>{
+      if (e.target === chk) return;
+      chk.checked = !chk.checked;
+      if (chk.checked) selectedIds.add(id); else selectedIds.delete(id);
+      updateSelCount();
+    });
+    chk.addEventListener('change', ()=>{
+      if (chk.checked) selectedIds.add(id); else selectedIds.delete(id);
+      updateSelCount();
+    });
+  });
+  updateSelCount();
+}
+
+function updateSelCount(){
+  const byId = new Map(filtered.map(m=> [m.id, m]));
+  let sumR=0, sumC=0;
+  for (const id of selectedIds){ const m=byId.get(id); if (m){ sumR+=(m.reward||0); sumC+=(m.collateral||0); } }
+  el('selCount').textContent = `${selectedIds.size} selected of ${filtered.length} shown (${missions.length} total) — ${fmtQ(sumR)} q reward, ${fmtQ(sumC)} q collateral`;
+  const hasSel = selectedIds.size>0;
+  el('planQph').disabled = !hasSel;
+  el('exportCsv').disabled = !hasSel;
+}
+
+function applySearch(q){
+  const s=(q||'').toLowerCase().trim();
+  if(!s){ filtered=missions.slice(); return; }
+  const tokens=s.split(/\s+/).filter(Boolean);
+  filtered=missions.filter(m=>{
+    const hay=`${m.name||''} ${m.pickupPlanet||''} ${m.dropPlanet||''} ${m.size_class||''} ${m.reward||0} ${m.collateral||0}`.toLowerCase();
+    return tokens.every(t=> hay.includes(t));
+  });
+}
+
+function useBaked(){
+  missions = hydrate(BAKED_MISSIONS.map(coerceMassVol));
+  filtered = missions.slice();
+  selectedIds.clear();
+  renderList();
+  clearRouteUI();
+  el('status').textContent = `Loaded ${missions.length} missions (baked).`;
+}
+
+function getChosen(){ const map=new Map(missions.map(m=>[m.id,m])); return Array.from(selectedIds).map(id=> map.get(id)).filter(Boolean); }
+function clearRouteUI(){ el('route').innerHTML=''; el('summary').innerHTML=''; const w=el('warning'); if(w){w.classList.add('hidden'); w.textContent='';} el('results').classList.add('hidden'); }
+
+// ------- Optimization helpers -------
+function tspOrderFrom(start, nodes){
+  const n=nodes.length; if(n<=1) return nodes.slice();
+  const dStart = nodes.map(p=> suBetween(start,p));
+  const d=Array.from({length:n},()=>Array(n).fill(Infinity));
+  for(let i=0;i<n;i++){ for(let j=0;j<n;j++){ d[i][j]= i===j?0:suBetween(nodes[i],nodes[j]); } }
+  const SIZE=1<<n, dp=Array.from({length:SIZE},()=>Array(n).fill(Infinity)), parent=Array.from({length:SIZE},()=>Array(n).fill(-1));
+  for(let i=0;i<n;i++) dp[1<<i][i]=dStart[i];
+  for(let mask=1; mask<SIZE; mask++){
+    for(let j=0;j<n;j++){ if(!(mask&(1<<j))) continue; const prev=mask^(1<<j); if(prev===0) continue;
+      for(let k=0;k<n;k++){ if(!(prev&(1<<k))) continue; const cand=dp[prev][k]+d[k][j]; if(cand<dp[mask][j]){ dp[mask][j]=cand; parent[mask][j]=k; } } } }
+  let best=Infinity, endIdx=0, full=SIZE-1; for(let j=0;j<n;j++){ if(dp[full][j]<best){ best=dp[full][j]; endIdx=j; } }
+  const order=[]; let mask=full, j=endIdx; while(j!==-1){ order.push(nodes[j]); const pj=parent[mask][j]; mask^=(1<<j); j=pj; } order.reverse(); return order;
+}
+
+// ---------- Planner with explicit cargo accounting & volume capacity enforcement ----------
+function planCollectOptimized(start, chosen){
+  const capV = parseFloat(el('shipCapVol').value); // volume-only capacity
+  const limitVol = Number.isFinite(capV) && capV>0 ? capV : Infinity;
+
+  const left = chosen.slice();
+  const route=[];
+  let current=start, totalKm=0, totalTime=0, totalReward=0;
+  let cargoMass=0, cargoVol=0;
+
+  let overcapLegs = []; // indices of legs that exceed capacity
+
+  function addLeg(leg){
+    // evaluate overcap for this leg after cargo change has been applied by caller
+    route.push(leg); totalKm+=leg.km; totalTime+=leg.h;
+    const vol = leg.cargoAfterVol!=null ? leg.cargoAfterVol : leg.cargoBeforeVol;
+    if (vol > limitVol) overcapLegs.push(route.length-1);
+  }
+
+  function positionToNearestPick(){
+    if(!left.length) return false;
+    let best=null, bestSu=Infinity;
+    for(const m of left){ const s=suBetween(current,m.pickupPlanet); if(s<bestSu){bestSu=s; best=m;} }
+    if(!best) return false;
+    const km=suToKm(bestSu), h=kmToH(km);
+    addLeg({type:'deadhead', from:current, to:best.pickupPlanet, su:bestSu, km, h,
+            cargoBeforeMass:cargoMass, cargoBeforeVol:cargoVol, cargoAfterMass:cargoMass, cargoAfterVol:cargoVol});
+    current=best.pickupPlanet; return true;
+  }
+
+  function loadBatchFromCurrent(){
+    const here = left.filter(m=> m.pickupPlanet===current);
+    if(!here.length) return [];
+    const scored = here.map(m=>({m, score:(m.reward||0)/Math.max(0.001,suBetween(current,m.dropPlanet))})).sort((a,b)=>b.score-a.score);
+    const batch=[]; let addM=0, addV=0;
+    for(const {m} of scored){
+      // ALLOW overfill: we do not block pickups if they exceed ship capacity
+      batch.push(m);
+      addM += m.mass_t||0;
+      addV += m.volume_kl||0;
+      cargoMass += m.mass_t||0;
+      cargoVol  += m.volume_kl||0;
+    }
+    // remove selected from left
+    for(const m of batch){ const i=left.indexOf(m); if(i>=0) left.splice(i,1); }
+    if(batch.length){
+      addLeg({type:'pickup', from:current, to:current, su:0, km:0, h:0,
+              picked: batch.map(x=>x.name),
+              cargoBeforeMass:cargoMass-addM, cargoBeforeVol:cargoVol-addV,
+              cargoAfterMass:cargoMass, cargoAfterVol:cargoVol,
+              deltaMass:+addM, deltaVol:+addV});
+    }
+    return batch;
+  }
+
+  while(left.length){
+    let loaded = loadBatchFromCurrent();
+    if(!loaded.length){
+      if(!positionToNearestPick()) break;
+      loaded = loadBatchFromCurrent();
+      if(!loaded.length) break;
+    }
+    const groups={}; for(const m of loaded){ (groups[m.dropPlanet] ||= []).push(m); }
+    const targets=Object.keys(groups); const order=tspOrderFrom(current, targets);
+    let prev=current;
+    for(const drop of order){
+      const missionsAtDrop = groups[drop];
+      const dm = missionsAtDrop.reduce((a,x)=>a+(x.mass_t||0),0);
+      const dv = missionsAtDrop.reduce((a,x)=>a+(x.volume_kl||0),0);
+      const reward = missionsAtDrop.reduce((a,x)=>a+(x.reward||0),0);
+      const su = suBetween(prev, drop), km=suToKm(su), h=kmToH(km);
+      const beforeM=cargoMass, beforeV=cargoVol;
+      const afterM=Math.max(0, beforeM - dm), afterV=Math.max(0, beforeV - dv);
+      addLeg({type:'deliver', missions:missionsAtDrop, from:prev, to:drop, su, km, h,
+              reward, deltaMass:-dm, deltaVol:-dv,
+              cargoBeforeMass:beforeM, cargoBeforeVol:beforeV,
+              cargoAfterMass:afterM, cargoAfterVol:afterV});
+      cargoMass=afterM; cargoVol=afterV; totalReward+=reward; prev=drop;
+    }
+    current=prev;
+  }
+
+  return {route,totalKm,totalTime,totalReward,overcapLegs,limitVol};
+}
+
+function appendReturnLeg(res, start, end){
+  const route = res.route.slice();
+  const lastStop = route.length ? route[route.length-1].to : start;
+  if(!end || end===lastStop) return res;
+  const su=suBetween(lastStop,end); if(!Number.isFinite(su)) return res;
+  const km=suToKm(su), h=kmToH(km);
+  route.push({type:'return', from:lastStop, to:end, su, km, h,
+              cargoBeforeMass:0, cargoBeforeVol:0, cargoAfterMass:0, cargoAfterVol:0});
+  return {...res, route, totalKm: res.totalKm+km, totalTime: res.totalTime+h};
+}
+
+function timeToEnd(from, end){ if(!end) return 0; const su=suBetween(from,end); return kmToH(suToKm(su)); }
+function applyTimeBudget(res, start, end, budgetH, includeReturn){
+  if(!isFinite(budgetH)||budgetH<=0) return res;
+  const route=[]; let totalKm=0,totalTime=0,totalReward=0; let cur=start;
+  const overcapLegs=[]; const limitVol=res.limitVol;
+  for(let idx=0; idx<res.route.length; idx++){
+    const leg = res.route[idx];
+    const nextT = totalTime + leg.h;
+    const extraR = includeReturn ? timeToEnd(leg.to, end) : 0;
+    if(nextT + extraR <= budgetH){
+      route.push(leg); totalKm+=leg.km; totalTime+=leg.h;
+      if(leg.type==='deliver') totalReward+=leg.reward||0;
+      cur=leg.to;
+      // keep overcap mark if present
+      if (leg.cargoAfterVol > limitVol) overcapLegs.push(route.length-1);
+    } else break;
+  }
+  if(includeReturn){
+    const rT=timeToEnd(cur,end); const su=suBetween(cur,end); const km=suToKm(su);
+    if(totalTime + rT <= budgetH && isFinite(rT)){
+      route.push({type:'return', from:cur, to:end, su, km, h:rT, cargoBeforeMass:0, cargoBeforeVol:0, cargoAfterMass:0, cargoAfterVol:0});
+      totalKm+=km; totalTime+=rT;
+    }
+  }
+  return {route,totalKm,totalTime,totalReward,overcapLegs,limitVol};
+}
+
+function renderPlan(res, totals, end, budgetH=0, limited=false){
+  const c=el('route'); c.innerHTML=''; let idx=1; let peakMass=0, peakVol=0;
+  const overcapSet = new Set(res.overcapLegs||[]);
+
+  for(let i=0;i<res.route.length;i++){
+    const leg = res.route[i];
+    peakMass = Math.max(peakMass, leg.cargoBeforeMass||0, leg.cargoAfterMass||0);
+    peakVol  = Math.max(peakVol, leg.cargoBeforeVol||0,  leg.cargoAfterVol||0);
+    const div=document.createElement('div'); div.className='leg';
+    if (overcapSet.has(i)) div.classList.add('overcap');
+
+    let badgeLabel=''; 
+    if(leg.type==='pickup') badgeLabel='Pickup';
+    else if(leg.type==='deliver') badgeLabel=`Mission ${idx++}`;
+    else if(leg.type==='return') badgeLabel='Return';
+    else badgeLabel='Deadhead';
+    const badge=document.createElement('div'); badge.className='badge'; badge.textContent=badgeLabel;
+    const main=document.createElement('div'); const meta=document.createElement('div'); meta.className='meta';
+    const cargo=document.createElement('div'); cargo.className='cargo';
+    const title = (leg.type==='pickup') ? `<strong>${leg.to}</strong>` : `<strong>${leg.from}</strong> → <strong>${leg.to}</strong>`;const tripMeta = (leg.type==='pickup') ? '' : `<div class="meta">${leg.su.toFixed(1)} SU · ${(leg.km).toLocaleString('en-US')} km · ${fmtH(leg.h)}</div>`;main.innerHTML = `${title}${tripMeta}`;
+    if(leg.type==='pickup'){
+      const list=(leg.picked||[]).slice(0,3).join(', ')+((leg.picked||[]).length>3?'…':'');
+      meta.textContent = `Collect: ${leg.picked?.length||0} mission(s) · +${leg.deltaVol||0} kL` + (list?` · ${list}`:'');
+    } else if(leg.type==='deliver'){
+      const totalR = leg.reward||0;
+      const names = leg.missions.map(m=>m.name).slice(0,3).join(', ')+ (leg.missions.length>3?'…':'');
+      meta.textContent = `Deliver: ${leg.missions.length} mission(s) · −${Math.abs(leg.deltaVol||0)} kL · ${fmtQ(totalR)} q total (${names})`;
+    } else {
+      meta.textContent = leg.type==='return' ? 'Return-to-end flight' : 'Positioning flight (no cargo change)';
+    }
+    const before = `${(leg.cargoBeforeVol||0)} kL`; const after  = `${(leg.cargoAfterVol||0)} kL`;
+    cargo.textContent = `Volume: ${before} → ${after}`;
+    const side=document.createElement('div'); side.style.textAlign='right';
+    if(leg.type==='deliver'){ side.innerHTML = `<div><strong>+${fmtQ(leg.reward||0)} q</strong></div>`; } else { side.innerHTML = `<div>&nbsp;</div>`; }
+    div.appendChild(badge); div.appendChild(main); div.appendChild(side); main.appendChild(meta); main.appendChild(cargo); c.appendChild(div);
+  }
+  const qph = res.totalReward/Math.max(res.totalTime,0.0001);
+  const budgetLine = limited ? `<div>Time budget: <strong>${fmtH(budgetH)}</strong> · Unused: <strong>${fmtH(Math.max(0, budgetH-res.totalTime))}</strong></div>` : '';
+  el('summary').innerHTML = `${budgetLine}
+                             <div>Peak volume carried: <strong>${peakVol} kL</strong> (Capacity: ${isFinite(res.limitVol)?res.limitVol:'∞'} kL)</div>
+                             <div>Total distance: <strong>${Math.round(res.totalKm).toLocaleString('en-US')} km</strong> (${Math.round(res.totalKm/200).toLocaleString('en-US')} SU)</div>
+                             <div>Total flight time: <strong>${fmtH(res.totalTime)}</strong></div>
+                             <div>Total reward: <strong>${fmtQ(res.totalReward)} q</strong> · Effective <strong>${fmtQ(Math.round(qph))} q/hr</strong></div>
+                             <div>Total collateral (selected): <strong>${fmtQ(totals.totalCollateral||0)} q</strong> across ${totals.count||0} missions</div>`;
+  el('results').classList.remove('hidden');
+
+  // Capacity warning
+  const warnEl = el('warning');
+  if (warnEl){
+    if ((res.overcapLegs||[]).length){
+      warnEl.classList.remove('hidden');
+      warnEl.textContent = `⚠ Over capacity on ${res.overcapLegs.length} leg(s). Overfilling is allowed but risky — consider increasing Ship Capacity or reducing selection.`;
+    } else {
+      warnEl.classList.add('hidden');
+      warnEl.textContent = '';
+    }
+  }
+}
+
+function setupHandlers(){
+  el('searchBox').addEventListener('input', (e)=>{ applySearch(e.target.value); renderList(); });
+  el('selectAll').addEventListener('click', ()=>{ filtered.forEach(m=> selectedIds.add(m.id)); renderList(); });
+  el('clearSelection').addEventListener('click', ()=>{ selectedIds.clear(); renderList(); });
+
+  function planBestQph(){
+    const chosen=getChosen(); if(!chosen.length){ el('status').textContent='Select at least one mission.'; return; }
+    const start=el('startPlanet').value; const end=el('endPlanet').value;
+    const budgetH=parseFloat(el('timeBudget').value); const limit=el('limitTime').checked && isFinite(budgetH) && budgetH>0;
+    const totals={ totalCollateral: chosen.reduce((a,m)=>a+(m.collateral||0),0), count:chosen.length };
+    let base=planCollectOptimized(start, chosen);
+    if(!limit){ const res=appendReturnLeg(base,start,end); renderPlan(res, totals, end, 0, false); return; }
+    const t=applyTimeBudget(base,start,end,budgetH,true); renderPlan(t, totals, end, budgetH, true);
+  }
+  el('planQph').addEventListener('click', planBestQph);
+  el('clearRoute').addEventListener('click', clearRouteUI);
+  el('exportCsv').addEventListener('click', ()=>{
+    const src=getChosen(); if(!src.length){ el('status').textContent='Select at least one mission to export.'; return; }
+    const rows=[['Name','From','To','Reward (q)','Collateral (q)','Vol (kL)','Size']];
+    for(const m of src) rows.push([m.name,m.pickupPlanet,m.dropPlanet,m.reward,m.collateral||0,m.volume_kl,m.size_class||'']);
+    const csv=rows.map(r=> r.map(v=> String(v).includes(',')?'\"'+v+'\"':String(v)).join(',')).join('\n');
+    const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='du-missions-export.csv'; a.click(); URL.revokeObjectURL(url);
+  });
+}
+
+function main(){ initUI(); useBaked(); setupHandlers(); setupHelpPersistence(); }
+function setupHelpPersistence(){
+  const d = document.getElementById('helpDetails');
+  if(!d) return;
+  try{
+    const v = localStorage.getItem('du_help_open');
+    if(v === '1') d.setAttribute('open','');
+  }catch(e){}
+  d.addEventListener('toggle', ()=>{
+    try{ localStorage.setItem('du_help_open', d.open ? '1' : '0'); }catch(e){}
+  });
+}
+
+main();
+
+
+// === Theme Toggle ===
+(function(){
+  const btn = document.getElementById('themeToggle');
+  function apply(theme){
+    const body = document.body;
+    if (theme === 'light') { body.classList.add('theme-light'); }
+    else { body.classList.remove('theme-light'); }
+    if (btn) btn.textContent = theme === 'light' ? '☀️ Light' : '🌙 Dark';
+  }
+  const saved = localStorage.getItem('du-theme') || 'dark';
+  apply(saved);
+  if (btn){
+    btn.addEventListener('click', () => {
+      const current = document.body.classList.contains('theme-light') ? 'light' : 'dark';
+      const next = current === 'light' ? 'dark' : 'light';
+      localStorage.setItem('du-theme', next);
+      apply(next);
+    });
+  }
+})();
