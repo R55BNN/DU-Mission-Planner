@@ -1,4 +1,12 @@
-# OS / editor junk
+
+# Ignore OS files
 .DS_Store
 Thumbs.db
-*.log
+
+# Ignore build zips
+*.zip
+
+# Ignore temporary local files
+node_modules/
+dist/
+.env
