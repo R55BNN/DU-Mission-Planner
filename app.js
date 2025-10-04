@@ -20,6 +20,108 @@ function fmtH(h){ const hh=Math.floor(h); const mm=Math.round((h-hh)*60); return
 function suBetween(a,b){ if(a===b) return 0; return distances[a]?.[b] ?? distances[b]?.[a] ?? Infinity; }
 function suToKm(x){ return x*SU_TO_KM; } function kmToH(km){ return km/SPEED; }
 
+// ---------- Repeat-cycle evaluator (single mission loop or reciprocal pair) ----------
+function computeBestRepeating(start, chosen){
+  let __repeatStart = start;
+  if(!chosen || !chosen.length) return null;
+  // Map by (from,to) for quick reciprocal lookup
+  const byKey = new Map();
+  for(const m of chosen){
+    const key = `${m.pickupPlanet}→${m.dropPlanet}`;
+    if(!byKey.has(key)) byKey.set(key, []);
+    byKey.get(key).push(m);
+  }
+  function cycleForSingle(m){
+    const P = m.pickupPlanet, D = m.dropPlanet;
+    const suPD = suBetween(P,D);
+    const suDP = suBetween(D,P);
+    if(!isFinite(suPD) || !isFinite(suDP)) return null;
+    const kmLeg = suToKm(suPD), hLeg = kmToH(kmLeg);
+    const kmBack = suToKm(suDP), hBack = kmToH(kmBack);
+    const reward = m.reward || 0;
+    const cycleH = hLeg + hBack;
+    const qph = cycleH>0 ? reward / cycleH : 0;
+    // Build a representative single cycle route
+    const route = [];
+    // reposition to pickup (one-off). Keep as deadhead so UI shows it; excluded from rate comparison below.
+    const repSu = suBetween(__repeatStart,P); if(isFinite(repSu) && repSu>0){
+      const repKm = suToKm(repSu), repH = kmToH(repKm);
+      route.push({type:'deadhead', from:start, to:P, su:repSu, km:repKm, h:repH, cargoBeforeVol:0, cargoAfterVol:0});
+      __repeatStart = P;
+    }
+    // pickup
+    route.push({type:'pickup', picked:[m.name], from:P, to:P, su:0, km:0, h:0, deltaMass:(m.mass_t||0), deltaVol:(m.volume_kl||0),
+                cargoBeforeVol:0, cargoAfterVol:(m.volume_kl||0)});
+    // deliver
+    route.push({type:'deliver', missions:[m], from:P, to:D, su:suPD, km:kmLeg, h:hLeg, reward:reward,
+                deltaMass:-(m.mass_t||0), deltaVol:-(m.volume_kl||0), cargoBeforeVol:(m.volume_kl||0), cargoAfterVol:0});
+    // deadhead back
+    route.push({type:'deadhead', from:D, to:P, su:suDP, km:kmBack, h:hBack, cargoBeforeVol:0, cargoAfterVol:0});
+    return {route, totalKm: kmLeg+kmBack, totalTime: hLeg+hBack, totalReward: reward, cycleH, cycleReward: reward, label:`Repeat: ${m.name}`, key:`single:${P}→${D}`};
+  }
+  function cycleForPair(m1, m2){
+    const P = m1.pickupPlanet, D = m1.dropPlanet; // m2 should be D->P
+    const suPD = suBetween(P,D);
+    const suDP = suBetween(D,P);
+    if(!isFinite(suPD) || !isFinite(suDP)) return null;
+    const kmPD = suToKm(suPD), hPD = kmToH(kmPD);
+    const kmDP = suToKm(suDP), hDP = kmToH(kmDP);
+    const reward = (m1.reward||0)+(m2.reward||0);
+    const cycleH = hPD + hDP;
+    const qph = cycleH>0 ? reward / cycleH : 0;
+    const route = [];
+    // reposition to pickup P
+    const repSu = suBetween(__repeatStart,P); if(isFinite(repSu) && repSu>0){
+      const repKm = suToKm(repSu), repH = kmToH(repKm);
+      route.push({type:'deadhead', from:start, to:P, su:repSu, km:repKm, h:repH, cargoBeforeVol:0, cargoAfterVol:0});
+      __repeatStart = P;
+    }
+    // pick A at P
+    route.push({type:'pickup', picked:[m1.name], from:P, to:P, su:0, km:0, h:0, deltaMass:(m1.mass_t||0), deltaVol:(m1.volume_kl||0),
+                cargoBeforeVol:0, cargoAfterVol:(m1.volume_kl||0)});
+    // deliver A to D
+    route.push({type:'deliver', missions:[m1], from:P, to:D, su:suPD, km:kmPD, h:hPD, reward:(m1.reward||0),
+                deltaMass:-(m1.mass_t||0), deltaVol:-(m1.volume_kl||0), cargoBeforeVol:(m1.volume_kl||0), cargoAfterVol:0});
+    // pick B at D
+    route.push({type:'pickup', picked:[m2.name], from:D, to:D, su:0, km:0, h:0, deltaMass:(m2.mass_t||0), deltaVol:(m2.volume_kl||0),
+                cargoBeforeVol:0, cargoAfterVol:(m2.volume_kl||0)});
+    // deliver B back to P
+    route.push({type:'deliver', missions:[m2], from:D, to:P, su:suDP, km:kmDP, h:hDP, reward:(m2.reward||0),
+                deltaMass:-(m2.mass_t||0), deltaVol:-(m2.volume_kl||0), cargoBeforeVol:(m2.volume_kl||0), cargoAfterVol:0});
+    return {route, totalKm: kmPD+kmDP, totalTime: hPD+hDP, totalReward: reward, cycleH, cycleReward: reward, label:`Repeat Pair: ${m1.name} ↔ ${m2.name}`, key:`pair:${P}↔${D}`};
+  }
+
+  let best = null, bestQph = -1;
+  // Single-mission loops
+  for(const m of chosen){
+    const cand = cycleForSingle(m);
+    if(!cand) continue;
+    const qph = cand.cycleReward / cand.cycleH;
+    if(qph > bestQph){ bestQph=qph; best=cand; }
+  }
+  // Reciprocal pairs
+  for(const m of chosen){
+    const revList = byKey.get(`${m.dropPlanet}→${m.pickupPlanet}`) || [];
+    for(const n of revList){
+      const cand = cycleForPair(m,n);
+      if(!cand) continue;
+      const qph = cand.cycleReward / cand.cycleH;
+      if(qph > bestQph){ bestQph=qph; best=cand; }
+    }
+  }
+  if(!best) return null;
+  // Provide overcap info (volume only)
+  const capV = parseFloat(el('shipCapVol').value); // volume-only capacity
+  const limitVol = Number.isFinite(capV) && capV>0 ? capV : Infinity;
+  const overcapLegs=[];
+  for(let i=0;i<best.route.length;i++){
+    const L = best.route[i];
+    const vol = L.cargoAfterVol!=null ? L.cargoAfterVol : L.cargoBeforeVol;
+    if (vol > limitVol) overcapLegs.push(i);
+  }
+  return { ...best, overcapLegs, limitVol, label: best.label, key: best.key };
+}
+
 function initUI(){
   const start=el('startPlanet'); const end=el('endPlanet');
   PLANETS.forEach(p=>{ const o=document.createElement('option'); o.value=o.textContent=p; start.appendChild(o); });
@@ -192,6 +294,26 @@ function planCollectOptimized(start, chosen){
   return {route,totalKm,totalTime,totalReward,overcapLegs,limitVol};
 }
 
+
+// Expand a repeating route plan into a finite number of cycles for display.
+function expandRepeatCycles(res, cycles){
+  try{
+    if(!res || !res.route || !res.route.length) return res;
+    const n = Math.max(1, cycles|0);
+    const body = res.route.slice(); // a single representative cycle
+    const out = [];
+    let totalKm = 0, totalTime = 0, totalReward = 0;
+    for(let i=0;i<n;i++){
+      for(const leg of body){
+        out.push({...leg}); 
+        totalKm += (leg.km||0);
+        totalTime += (leg.h||0);
+        if(leg.type==='deliver') totalReward += (leg.reward||0);
+      }
+    }
+    return {...res, route: out, totalKm, totalTime, totalReward};
+  }catch(e){ return res; }
+}
 function appendReturnLeg(res, start, end){
   const route = res.route.slice();
   const lastStop = route.length ? route[route.length-1].to : start;
@@ -204,33 +326,54 @@ function appendReturnLeg(res, start, end){
 }
 
 function timeToEnd(from, end){ if(!end) return 0; const su=suBetween(from,end); return kmToH(suToKm(su)); }
-function applyTimeBudget(res, start, end, budgetH, includeReturn){
-  if(!isFinite(budgetH)||budgetH<=0) return res;
-  const route=[]; let totalKm=0,totalTime=0,totalReward=0; let cur=start;
-  const overcapLegs=[]; const limitVol=res.limitVol;
-  for(let idx=0; idx<res.route.length; idx++){
-    const leg = res.route[idx];
-    const nextT = totalTime + leg.h;
+
+
+function applyTimeBudget(res, start, end, budgetH, includeReturn, repeatable){
+  if(!isFinite(budgetH) || budgetH <= 0) return res;
+  const route = [];
+  let totalKm = 0, totalTime = 0, totalReward = 0;
+  let cur = start;
+  const overcapLegs = [];
+  const limitVol = res.limitVol;
+
+  function tryPush(leg){
+    const nextT = totalTime + (leg.h || 0);
     const extraR = includeReturn ? timeToEnd(leg.to, end) : 0;
     if(nextT + extraR <= budgetH){
-      route.push(leg); totalKm+=leg.km; totalTime+=leg.h;
-      if(leg.type==='deliver') totalReward+=leg.reward||0;
-      cur=leg.to;
-      // keep overcap mark if present
-      if (leg.cargoAfterVol > limitVol) overcapLegs.push(route.length-1);
-    } else break;
+      route.push(leg);
+      totalKm += (leg.km || 0);
+      totalTime += (leg.h || 0);
+      if(leg.type === 'deliver') totalReward += (leg.reward || 0);
+      if(leg.cargoAfterVol > limitVol) overcapLegs.push(route.length-1);
+      cur = leg.to;
+      return true;
+    }
+    return false;
   }
-  if(includeReturn){
-    const rT=timeToEnd(cur,end); const su=suBetween(cur,end); const km=suToKm(su);
-    if(totalTime + rT <= budgetH && isFinite(rT)){
-      route.push({type:'return', from:cur, to:end, su, km, h:rT, cargoBeforeMass:0, cargoBeforeVol:0, cargoAfterMass:0, cargoAfterVol:0});
-      totalKm+=km; totalTime+=rT;
+
+  let cycles = repeatable ? 200 : 1;
+  outer: while(cycles-- > 0){
+    for(let idx=0; idx<res.route.length; idx++){
+      const leg = res.route[idx];
+      if(!tryPush(leg)) break outer;
     }
   }
-  return {route,totalKm,totalTime,totalReward,overcapLegs,limitVol};
+
+  if(includeReturn){
+    const rT=timeToEnd(cur, end);
+    const su=suBetween(cur, end);
+    const km=suToKm(su);
+    if(isFinite(rT) && totalTime + rT <= budgetH){
+      const leg = {type:'return', from:cur, to:end, su, km, h:rT, cargoBeforeMass:0, cargoBeforeVol:0, cargoAfterMass:0, cargoAfterVol:0};
+      route.push(leg);
+      totalKm += km;
+      totalTime += rT;
+    }
+  }
+  return {route, totalKm, totalTime, totalReward, overcapLegs, limitVol};
 }
 
-function renderPlan(res, totals, end, budgetH=0, limited=false){
+function renderPlan(res, totals, end, budgetH=0, limited=false, pickedLabel){
   const c=el('route'); c.innerHTML=''; let idx=1; let peakMass=0, peakVol=0;
   const overcapSet = new Set(res.overcapLegs||[]);
 
@@ -295,13 +438,30 @@ function setupHandlers(){
   el('clearSelection').addEventListener('click', ()=>{ selectedIds.clear(); renderList(); });
 
   function planBestQph(){
+    // Compare full route vs repeating subset; choose higher q/hr
     const chosen=getChosen(); if(!chosen.length){ el('status').textContent='Select at least one mission.'; return; }
     const start=el('startPlanet').value; const end=el('endPlanet').value;
     const budgetH=parseFloat(el('timeBudget').value); const limit=el('limitTime').checked && isFinite(budgetH) && budgetH>0;
     const totals={ totalCollateral: chosen.reduce((a,m)=>a+(m.collateral||0),0), count:chosen.length };
     let base=planCollectOptimized(start, chosen);
-    if(!limit){ const res=appendReturnLeg(base,start,end); renderPlan(res, totals, end, 0, false); return; }
-    const t=applyTimeBudget(base,start,end,budgetH,true); renderPlan(t, totals, end, budgetH, true);
+    const repeat = computeBestRepeating(start, chosen);
+    // Decide which strategy yields higher q/hr
+    let pick = base, pickedLabel = 'Full route';
+    function rate(res, includeReturn){
+      const endPlanet = el('endPlanet').value;
+      const returnH = includeReturn ? timeToEnd(res.route.length? res.route[res.route.length-1].to : start, endPlanet) : 0;
+      const t = res.totalTime + returnH;
+      return t>0 ? (res.totalReward / t) : 0;
+    }
+    if(repeat){
+      const r1 = rate(base, true);
+      const r2 = (repeat.cycleReward / repeat.cycleH); // steady-state
+      if(r2 > r1){ pick = repeat; pickedLabel = repeat.label; }
+    if(pickedLabel && pickedLabel.startsWith('Repeat')){ el('status').textContent='Chose repeating cycle for higher quanta/hour.'; } else { el('status').textContent=''; }
+    }
+    if(!limit){ const res=appendReturnLeg(pick,start,end); renderPlan(res, totals, end, 0, false, pickedLabel); return; }
+    const t=applyTimeBudget(pick,start,end,budgetH,true, /*repeatable*/ pick.key && pick.key.startsWith('pair:') || pick.key && pick.key.startsWith('single:'));
+    renderPlan(t, totals, end, budgetH, true, pickedLabel);
   }
   el('planQph').addEventListener('click', planBestQph);
   el('clearRoute').addEventListener('click', clearRouteUI);
@@ -350,3 +510,10 @@ main();
     });
   }
 })();
+
+function ensurePlanets(){
+  const sp = el('startPlanet'), ep = el('endPlanet');
+  if(sp && !sp.options.length){ PLANETS.forEach(p=>{ const o=document.createElement('option'); o.value=o.textContent=p; sp.appendChild(o); }); }
+  if(ep && !ep.options.length){ PLANETS.forEach(p=>{ const o=document.createElement('option'); o.value=o.textContent=p; ep.appendChild(o); }); }
+}
+document.addEventListener('DOMContentLoaded', ensurePlanets);
