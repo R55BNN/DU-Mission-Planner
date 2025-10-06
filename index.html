@@ -88,7 +88,19 @@
     </div>
 
     <div class="actions">
-      <button id="planQph" class="secondary">Plan Route</button>
+      
+<div class="field" id="modeToggle" style="margin:8px 0 6px 0">
+  <label style="display:block; margin-bottom:4px; font-weight:600">Routing mode</label>
+  <label style="display:inline-flex; align-items:center; gap:6px; margin-right:18px;">
+    <input type="checkbox" id="optimizeQph" checked>
+    <span>Optimize for best quanta/hour (repeat loops)</span>
+  </label>
+  <label style="display:inline-flex; align-items:center; gap:6px;">
+    <input type="checkbox" id="runAllMissions">
+    <span>Run all selected missions (full route)</span>
+  </label>
+</div>
+<button id="planQph" class="secondary">Plan Route</button>
       <button id="exportCsv" class="ghost">Export CSV (selected)</button>
       <span id="status"></span>
     </div>

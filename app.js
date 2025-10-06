@@ -432,6 +432,73 @@ function renderPlan(res, totals, end, budgetH=0, limited=false, pickedLabel){
   }
 }
 
+
+function planFullRoute(){
+  const chosen = getChosen();
+  if(!chosen || !chosen.length){
+    el('status').textContent='Select at least one mission.';
+    return;
+  }
+
+  const start = (typeof getStartPlanet==='function')
+    ? getStartPlanet()
+    : (document.getElementById('startPlanet')?.value || 'Alioth');
+  const end = (typeof getEndPlanet==='function')
+    ? getEndPlanet()
+    : (document.getElementById('endPlanet')?.value || 'Alioth');
+
+  const budgetH = parseFloat(el('timeBudget')?.value || 'NaN');
+  const limit = !!(el('limitTime')?.checked && isFinite(budgetH) && budgetH>0);
+
+  const totals = {
+    totalCollateral: chosen.reduce((a,m)=>a+(m.collateral||0),0),
+    count: chosen.length
+  };
+
+  // Build full route across ALL selected missions
+  let res = planCollectOptimized(start, chosen);
+
+  if(!res || !Array.isArray(res.route)){
+    el('status').textContent = 'Could not build a route. Check mission selection/data.';
+    return;
+  }
+
+  // Enforce selected Start
+  // Enforce selected Start (if route doesn’t begin there, add a deadhead leg)
+  if (res.route.length && res.route[0].from !== start) {
+    const firstFrom = res.route[0].from;
+    const su = suBetween(start, firstFrom);
+    if (isFinite(su) && su > 0) {
+      const km = suToKm(su);
+      const h = kmToH(km);
+      res.route.unshift({
+        type: 'deadhead',
+        from: start,
+        to: firstFrom,
+        su,
+        km,
+        h,
+        cargoBeforeMass: 0,
+        cargoBeforeVol: 0,
+        cargoAfterMass: 0,
+        cargoAfterVol: 0
+      });
+      res.totalKm += km;
+      res.totalTime += h;
+    }
+  }
+
+  if(!limit){
+    const finalRes = appendReturnLeg(res, start, end);
+    el('status').textContent = 'Mode: Full route (run all selected)';
+    renderPlan(finalRes, totals, end, 0, false, 'Full route');
+    return;
+  }
+
+  const trimmed = applyTimeBudget(res, start, end, budgetH, true, /*repeatable*/ false);
+  el('status').textContent = 'Mode: Full route (time-limited)';
+  renderPlan(trimmed, totals, end, budgetH, true, 'Full route');
+}
 function setupHandlers(){
   el('searchBox').addEventListener('input', (e)=>{ applySearch(e.target.value); renderList(); });
   el('selectAll').addEventListener('click', ()=>{ filtered.forEach(m=> selectedIds.add(m.id)); renderList(); });
@@ -463,7 +530,6 @@ function setupHandlers(){
     const t=applyTimeBudget(pick,start,end,budgetH,true, /*repeatable*/ pick.key && pick.key.startsWith('pair:') || pick.key && pick.key.startsWith('single:'));
     renderPlan(t, totals, end, budgetH, true, pickedLabel);
   }
-  el('planQph').addEventListener('click', planBestQph);
   el('clearRoute').addEventListener('click', clearRouteUI);
   el('exportCsv').addEventListener('click', ()=>{
     const src=getChosen(); if(!src.length){ el('status').textContent='Select at least one mission to export.'; return; }
@@ -472,6 +538,31 @@ function setupHandlers(){
     const csv=rows.map(r=> r.map(v=> String(v).includes(',')?'\"'+v+'\"':String(v)).join(',')).join('\n');
     const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='du-missions-export.csv'; a.click(); URL.revokeObjectURL(url);
   });
+  // Plan button: branch by mode
+  el('planQph').addEventListener('click', ()=>{
+    const chosen = getChosen();
+    if (!chosen || !chosen.length){
+      el('status').textContent = 'Select at least one mission.';
+      return;
+    }
+    const runAll = el('runAllMissions') && el('runAllMissions').checked;
+    if (runAll) {
+      el('status').textContent = 'Planning full route...';
+      planFullRoute();
+    } else {
+      el('status').textContent = 'Optimizing for best quanta/hour...';
+      planBestQph();
+    }
+  });
+
+  // Mutually exclusive toggles
+  const cbOpt = el('optimizeQph');
+  const cbAll = el('runAllMissions');
+  if (cbOpt && cbAll){
+    cbOpt.addEventListener('change', ()=>{ if(cbOpt.checked) cbAll.checked = false; });
+    cbAll.addEventListener('change', ()=>{ if(cbAll.checked) cbOpt.checked = false; });
+  }
+
 }
 
 function main(){ initUI(); useBaked(); setupHandlers(); setupHelpPersistence(); }
