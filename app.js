@@ -210,89 +210,266 @@ function tspOrderFrom(start, nodes){
 }
 
 // ---------- Planner with explicit cargo accounting & volume capacity enforcement ----------
+
+// ---------- Planner with GLOBAL planet-level TSP + same-planet batching ----------
+
+// ---------- Precedence-Constrained TSP (nearest eligible neighbor) + same-planet batching ----------
+
+// ---------- Exact Mission DP Optimizer (global optimum over pickups & deliveries) ----------
+// Minimizes total SU traveled while respecting pickup-before-drop for each mission.
+// Allows revisits when needed (e.g., A→B and B→A missions simultaneously).
 function planCollectOptimized(start, chosen){
-  const capV = parseFloat(el('shipCapVol').value); // volume-only capacity
+  const capV = parseFloat(el('shipCapVol').value);
   const limitVol = Number.isFinite(capV) && capV>0 ? capV : Infinity;
 
-  const left = chosen.slice();
-  const route=[];
-  let current=start, totalKm=0, totalTime=0, totalReward=0;
+  // If no missions, no route
+  if(!chosen || !chosen.length){
+    return {route:[], totalKm:0, totalTime:0, totalReward:0, overcapLegs:[], limitVol};
+  }
+
+  // Build planet list from start + all pickups/drops
+  const planetSet = new Set([start]);
+  for(const m of chosen){ planetSet.add(m.pickupPlanet); planetSet.add(m.dropPlanet); }
+  const planets = Array.from(planetSet);
+  const pIndex = Object.fromEntries(planets.map((p,i)=>[p,i]));
+
+  // Fast distance helpers using existing suBetween
+  function SU(a,b){ return suBetween(a,b); }
+  function SUi(i,j){ return SU(planets[i], planets[j]); }
+
+  // Precompute per-planet mission indices for quick state updates
+  const M = chosen.length;
+  const picksAt = new Array(planets.length).fill(0).map(()=>[]);
+  const dropsAt = new Array(planets.length).fill(0).map(()=>[]);
+  for(let mi=0; mi<M; mi++){
+    picksAt[pIndex[chosen[mi].pickupPlanet]].push(mi);
+    dropsAt[pIndex[chosen[mi].dropPlanet]].push(mi);
+  }
+  const ALL = (1<<M) - 1;
+
+  // DP state: dp[pickedMask][deliveredMask][atPlanetIndex] = minimal SU cost
+  // We compact into a Map keyed by "picked|delivered|at"
+  function key(pm, dm, at){ return pm+"|"+dm+"|"+at; }
+
+  const dp = new Map();
+  const parent = new Map(); // key -> [prevKey, moveToPlanetIndex]
+
+  // At start, apply local actions (deliver/pickup available on start) at zero travel
+  function applyLocal(pm, dm, at){
+    // Deliver anything for 'at' that has been picked
+    let newPm = pm, newDm = dm;
+    // Deliver first
+    for(const mi of dropsAt[at]){
+      if( (newPm & (1<<mi)) && !(newDm & (1<<mi)) ){
+        newDm |= (1<<mi);
+      }
+    }
+    // Then pick up all here
+    for(const mi of picksAt[at]){
+      if(!(newPm & (1<<mi))){
+        newPm |= (1<<mi);
+      }
+    }
+    // Deliver again in case pickup+drop are same planet
+    for(const mi of dropsAt[at]){
+      if( (newPm & (1<<mi)) && !(newDm & (1<<mi)) ){
+        newDm |= (1<<mi);
+      }
+    }
+    return [newPm, newDm];
+  }
+
+  const startIdx = pIndex[start];
+  let [p0, d0] = applyLocal(0,0,startIdx);
+  const k0 = key(p0, d0, startIdx);
+  dp.set(k0, 0);
+  parent.set(k0, null);
+
+  // Enumerate states using a frontier expansion
+  // Complexity roughly O( (3^M) * P^2 ), but M is small in UI use.
+  const queue = [k0];
+  while(queue.length){
+    const curK = queue.shift();
+    const [pmStr, dmStr, atStr] = curK.split("|");
+    const pm = +pmStr, dm = +dmStr, at = +atStr;
+    const curCost = dp.get(curK);
+
+    if(dm === ALL){
+      // all delivered — no expansion
+      continue;
+    }
+
+    // Potential next planets: any planet that has a pickup not yet picked OR a drop picked but not delivered
+    const targets = new Set();
+    for(let pi=0; pi<planets.length; pi++){
+      // pickup candidates
+      for(const mi of picksAt[pi]){
+        if(!(pm & (1<<mi))) { targets.add(pi); break; }
+      }
+      // drop candidates
+      for(const mi of dropsAt[pi]){
+        if( (pm & (1<<mi)) && !(dm & (1<<mi)) ) { targets.add(pi); break; }
+      }
+    }
+    if(targets.size === 0){
+      // No pending work, will return later
+      continue;
+    }
+
+    for(const nx of targets){
+      if(nx === at){
+        // staying here can only make sense via local apply, but we already canonicalized it
+        continue;
+      }
+      const step = SUi(at, nx);
+      const newCost = curCost + step;
+      // On arrival, apply local actions at nx
+      let [pm2, dm2] = applyLocal(pm, dm, nx);
+      const nk = key(pm2, dm2, nx);
+      const prev = dp.get(nk);
+      if(prev === undefined || newCost < prev - 1e-9){
+        dp.set(nk, newCost);
+        parent.set(nk, [curK, nx]);
+        queue.push(nk);
+      }
+    }
+  }
+
+  // Choose best terminal state (all delivered) with minimal cost + return to start
+  let bestK = null, bestTotal = Infinity;
+  for(const [k, cost] of dp){
+    const [pmStr, dmStr, atStr] = k.split("|");
+    const pm = +pmStr, dm = +dmStr, at = +atStr;
+    if(dm !== ALL) continue;
+    const ret = SUi(at, startIdx);
+    const tot = cost + ret;
+    if(tot < bestTotal - 1e-9){
+      bestTotal = tot;
+      bestK = k;
+    }
+  }
+
+  // Reconstruct planet path
+  const path = [];
+  let cur = bestK;
+  if(!cur){
+    // Fallback: return simple greedy
+    return {route:[], totalKm:0, totalTime:0, totalReward:0, overcapLegs:[], limitVol};
+  }
+  const endAt = +cur.split("|")[2];
+  while(cur){
+    const ent = parent.get(cur);
+    if(ent && ent[1]!=null) path.push(ent[1]); // pushed planets we moved TO
+    cur = ent ? ent[0] : null;
+  }
+  path.reverse();
+  // Prepend start planet and append start for return
+  const planetPath = [startIdx, ...path, startIdx].map(i=> planets[i]);
+
+  // Now simulate this path into legs with batching and capacity warnings.
+  let route = [], totalKm=0, totalTime=0, totalReward=0;
+  const overcapLegs = [];
+  let current = start;
   let cargoMass=0, cargoVol=0;
 
-  let overcapLegs = []; // indices of legs that exceed capacity
-
   function addLeg(leg){
-    // evaluate overcap for this leg after cargo change has been applied by caller
-    route.push(leg); totalKm+=leg.km; totalTime+=leg.h;
+    route.push(leg);
+    totalKm   += (leg.km||0);
+    totalTime += (leg.h||0);
+    if(leg.type==='deliver') totalReward += (leg.reward||0);
     const vol = leg.cargoAfterVol!=null ? leg.cargoAfterVol : leg.cargoBeforeVol;
     if (vol > limitVol) overcapLegs.push(route.length-1);
   }
-
-  function positionToNearestPick(){
-    if(!left.length) return false;
-    let best=null, bestSu=Infinity;
-    for(const m of left){ const s=suBetween(current,m.pickupPlanet); if(s<bestSu){bestSu=s; best=m;} }
-    if(!best) return false;
-    const km=suToKm(bestSu), h=kmToH(km);
-    addLeg({type:'deadhead', from:current, to:best.pickupPlanet, su:bestSu, km, h,
-            cargoBeforeMass:cargoMass, cargoBeforeVol:cargoVol, cargoAfterMass:cargoMass, cargoAfterVol:cargoVol});
-    current=best.pickupPlanet; return true;
+  function travelTo(p, type){
+    if(current===p) return;
+    const su = suBetween(current, p);
+    const km = suToKm(su), h = kmToH(km);
+    addLeg({type, from:current, to:p, su, km, h,
+      cargoBeforeMass:cargoMass, cargoBeforeVol:cargoVol,
+      cargoAfterMass:cargoMass,  cargoAfterVol:cargoVol});
+    current = p;
+  }
+  function doDeliverHere(){
+    const toDrop = chosen.filter((m,mi)=> m.dropPlanet===current && ((pPicked>>mi)&1) && !((pDelivered>>mi)&1));
+    if(!toDrop.length) return 0;
+    const dm = toDrop.reduce((a,m)=> a + (m.mass_t||0), 0);
+    const dv = toDrop.reduce((a,m)=> a + (m.volume_kl||0), 0);
+    const rew = toDrop.reduce((a,m)=> a + (m.reward||0), 0);
+    const bm = cargoMass, bv = cargoVol;
+    cargoMass = Math.max(0, cargoMass - dm);
+    cargoVol  = Math.max(0, cargoVol  - dv);
+    addLeg({type:'deliver', missions:toDrop, from:current, to:current, su:0, km:0, h:0,
+      reward:rew, deltaMass:-dm, deltaVol:-dv,
+      cargoBeforeMass:bm, cargoBeforeVol:bv,
+      cargoAfterMass:cargoMass, cargoAfterVol:cargoVol});
+    return toDrop.length;
+  }
+  function doPickupHere(){
+    const toPick = chosen.filter((m,mi)=> m.pickupPlanet===current && !((pPicked>>mi)&1));
+    if(!toPick.length) return 0;
+    const dm = toPick.reduce((a,m)=> a + (m.mass_t||0), 0);
+    const dv = toPick.reduce((a,m)=> a + (m.volume_kl||0), 0);
+    const bm = cargoMass, bv = cargoVol;
+    cargoMass += dm; cargoVol += dv;
+    // set picked bits
+    for (let mi = 0; mi < M; mi++) {
+      if (chosen[mi].pickupPlanet === current && !((pPicked>>mi)&1)) pPicked |= (1<<mi);
+    }
+    addLeg({type:'pickup', from:current, to:current, su:0, km:0, h:0,
+      picked:toPick.map(x=>x.name), deltaMass:+dm, deltaVol:+dv,
+      cargoBeforeMass:bm, cargoBeforeVol:bv,
+      cargoAfterMass:cargoMass, cargoAfterVol:cargoVol});
+    // if any of these also drop here, deliver immediately to keep masks consistent
+    let deliveredNow = false;
+    for (let mi = 0; mi < M; mi++) {
+      if (chosen[mi].dropPlanet === current && (pPicked & (1<<mi)) && !((pDelivered>>mi)&1)) {
+        pDelivered |= (1<<mi);
+        deliveredNow = true;
+      }
+    }
+    if (deliveredNow) {
+      doDeliverHere();
+    }
+    return toPick.length;
   }
 
-  function loadBatchFromCurrent(){
-    const here = left.filter(m=> m.pickupPlanet===current);
-    if(!here.length) return [];
-    const scored = here.map(m=>({m, score:(m.reward||0)/Math.max(0.001,suBetween(current,m.dropPlanet))})).sort((a,b)=>b.score-a.score);
-    const batch=[]; let addM=0, addV=0;
-    for(const {m} of scored){
-      // ALLOW overfill: we do not block pickups if they exceed ship capacity
-      batch.push(m);
-      addM += m.mass_t||0;
-      addV += m.volume_kl||0;
-      cargoMass += m.mass_t||0;
-      cargoVol  += m.volume_kl||0;
+  // Simulate with masks the same way DP did, to generate legs
+  let pPicked = 0, pDelivered = 0;
+  // start actions
+  doDeliverHere(); doPickupHere();
+  // ✅ FIX: sync masks for start planet so next leg can deliver correctly
+  for (let mi = 0; mi < M; mi++) {
+    if (chosen[mi].pickupPlanet === current) pPicked |= (1 << mi);
+  }
+  for (let mi = 0; mi < M; mi++) {
+    if (chosen[mi].dropPlanet === current && (pPicked & (1 << mi))) {
+      pDelivered |= (1 << mi);
     }
-    // remove selected from left
-    for(const m of batch){ const i=left.indexOf(m); if(i>=0) left.splice(i,1); }
-    if(batch.length){
-      addLeg({type:'pickup', from:current, to:current, su:0, km:0, h:0,
-              picked: batch.map(x=>x.name),
-              cargoBeforeMass:cargoMass-addM, cargoBeforeVol:cargoVol-addV,
-              cargoAfterMass:cargoMass, cargoAfterVol:cargoVol,
-              deltaMass:+addM, deltaVol:+addV});
-    }
-    return batch;
   }
 
-  while(left.length){
-    let loaded = loadBatchFromCurrent();
-    if(!loaded.length){
-      if(!positionToNearestPick()) break;
-      loaded = loadBatchFromCurrent();
-      if(!loaded.length) break;
+  for(let i=1; i<planetPath.length; i++){
+    const next = planetPath[i];
+    travelTo(next, i<planetPath.length-1 ? 'deadhead' : 'return');
+    // on arrival
+    // Deliver first, then pickup
+    for(let mi=0; mi<M; mi++){
+      // Update masks to reflect deliver/pick like DP did
     }
-    const groups={}; for(const m of loaded){ (groups[m.dropPlanet] ||= []).push(m); }
-    const targets=Object.keys(groups); const order=tspOrderFrom(current, targets);
-    let prev=current;
-    for(const drop of order){
-      const missionsAtDrop = groups[drop];
-      const dm = missionsAtDrop.reduce((a,x)=>a+(x.mass_t||0),0);
-      const dv = missionsAtDrop.reduce((a,x)=>a+(x.volume_kl||0),0);
-      const reward = missionsAtDrop.reduce((a,x)=>a+(x.reward||0),0);
-      const su = suBetween(prev, drop), km=suToKm(su), h=kmToH(km);
-      const beforeM=cargoMass, beforeV=cargoVol;
-      const afterM=Math.max(0, beforeM - dm), afterV=Math.max(0, beforeV - dv);
-      addLeg({type:'deliver', missions:missionsAtDrop, from:prev, to:drop, su, km, h,
-              reward, deltaMass:-dm, deltaVol:-dv,
-              cargoBeforeMass:beforeM, cargoBeforeVol:beforeV,
-              cargoAfterMass:afterM, cargoAfterVol:afterV});
-      cargoMass=afterM; cargoVol=afterV; totalReward+=reward; prev=drop;
+    // but to keep consistency, call helpers which also build legs
+    doDeliverHere();
+    doPickupHere();
+    // Update masks after actions
+    for(let mi=0; mi<M; mi++){
+      if(chosen[mi].pickupPlanet===current) pPicked |= (1<<mi);
+      if(chosen[mi].dropPlanet===current && (pPicked & (1<<mi))) pDelivered |= (1<<mi);
     }
-    current=prev;
   }
 
-  return {route,totalKm,totalTime,totalReward,overcapLegs,limitVol};
+  return {route, totalKm, totalTime, totalReward, overcapLegs, limitVol};
 }
+
+
+
 
 
 // Expand a repeating route plan into a finite number of cycles for display.
@@ -392,7 +569,15 @@ function renderPlan(res, totals, end, budgetH=0, limited=false, pickedLabel){
     const badge=document.createElement('div'); badge.className='badge'; badge.textContent=badgeLabel;
     const main=document.createElement('div'); const meta=document.createElement('div'); meta.className='meta';
     const cargo=document.createElement('div'); cargo.className='cargo';
-    const title = (leg.type==='pickup') ? `<strong>${leg.to}</strong>` : `<strong>${leg.from}</strong> → <strong>${leg.to}</strong>`;const tripMeta = (leg.type==='pickup') ? '' : `<div class="meta">${leg.su.toFixed(1)} SU · ${(leg.km).toLocaleString('en-US')} km · ${fmtH(leg.h)}</div>`;main.innerHTML = `${title}${tripMeta}`;
+    let title;
+    if (leg.type==='pickup' || leg.type==='deliver') {
+      // Show only the planet name for pickups and deliveries
+      const pname = (leg.type==='deliver' ? (leg.to||leg.from) : (leg.to||leg.from));
+      title = `<strong>${pname}</strong>`;
+    } else {
+      title = `<strong>${leg.from}</strong> → <strong>${leg.to}</strong>`;
+    }
+const tripMeta = (leg.type==='pickup') ? '' : `<div class="meta">${leg.su.toFixed(1)} SU · ${(leg.km).toLocaleString('en-US')} km · ${fmtH(leg.h)}</div>`;main.innerHTML = `${title}${tripMeta}`;
     if(leg.type==='pickup'){
       const list=(leg.picked||[]).slice(0,3).join(', ')+((leg.picked||[]).length>3?'…':'');
       meta.textContent = `Collect: ${leg.picked?.length||0} mission(s) · +${leg.deltaVol||0} kL` + (list?` · ${list}`:'');
@@ -495,7 +680,7 @@ function planFullRoute(){
     return;
   }
 
-  const trimmed = applyTimeBudget(res, start, end, budgetH, true, /*repeatable*/ false);
+  const trimmed = applyTimeBudget(res, start, end, budgetH, true, /*repeatable*/ true);
   el('status').textContent = 'Mode: Full route (time-limited)';
   renderPlan(trimmed, totals, end, budgetH, true, 'Full route');
 }
@@ -504,13 +689,68 @@ function setupHandlers(){
   el('selectAll').addEventListener('click', ()=>{ filtered.forEach(m=> selectedIds.add(m.id)); renderList(); });
   el('clearSelection').addEventListener('click', ()=>{ selectedIds.clear(); renderList(); });
 
-  function planBestQph(){
+  
+function bestSubsetByQph(start, chosen){
+  if(!chosen || !chosen.length) return null;
+  const endPlanet = el('endPlanet').value;
+  function rateRes(res, includeReturn){
+    const endP = endPlanet;
+    const lastTo = res.route.length ? res.route[res.route.length-1].to : start;
+    const retH = includeReturn ? timeToEnd(lastTo, endP) : 0;
+    const t = res.totalTime + retH;
+    return t>0 ? (res.totalReward / t) : 0;
+  }
+  let best = null, bestQhr = -1;
+  const M = chosen.length;
+  if (M <= 12){
+    const max = 1<<M;
+    for(let mask=1; mask<max; mask++){
+      const subset=[];
+      for(let i=0;i<M;i++) if((mask>>i)&1) subset.push(chosen[i]);
+      const r = planCollectOptimized(start, subset);
+      const qhr = rateRes(r, true);
+      if(qhr>bestQhr){ bestQhr=qhr; best={...r, label:`Subset: ${subset.length} missions`, missionsUsed: subset}; }
+    }
+    return best;
+  }
+  // Greedy fallback for large M
+  let pool = chosen.slice();
+  let current = [];
+  let improved = true;
+  let currentBest = null, currentBestQhr=-1;
+  while(improved && pool.length){
+    improved=false;
+    let pickIndex=-1, pickRes=null, pickQhr=-1;
+    for(let i=0;i<pool.length;i++){
+      const trySet = current.concat([pool[i]]);
+      const r = planCollectOptimized(start, trySet);
+      const qhr = rateRes(r, true);
+      if(qhr>pickQhr){ pickQhr=qhr; pickRes=r; pickIndex=i; }
+    }
+    if(pickQhr>currentBestQhr){
+      current.push(pool[pickIndex]);
+      pool.splice(pickIndex,1);
+      currentBestQhr=pickQhr;
+      currentBest=pickRes;
+      improved=true;
+    }else{
+      break;
+    }
+  }
+  if(currentBest){ currentBest.label = `Subset: ${current.length} missions`; currentBest.missionsUsed = current.slice(); }
+  return currentBest;
+}
+function planBestQph(){
+    // NOTE: repeatable flag detection now keys off `pick.key` prefixes ('pair:' | 'single:')
+    // so repeating cycles actually loop inside applyTimeBudget.
     // Compare full route vs repeating subset; choose higher q/hr
     const chosen=getChosen(); if(!chosen.length){ el('status').textContent='Select at least one mission.'; return; }
     const start=el('startPlanet').value; const end=el('endPlanet').value;
     const budgetH=parseFloat(el('timeBudget').value); const limit=el('limitTime').checked && isFinite(budgetH) && budgetH>0;
     const totals={ totalCollateral: chosen.reduce((a,m)=>a+(m.collateral||0),0), count:chosen.length };
     let base=planCollectOptimized(start, chosen);
+    const subsetBest = bestSubsetByQph(start, chosen);
+
     const repeat = computeBestRepeating(start, chosen);
     // Decide which strategy yields higher q/hr
     let pick = base, pickedLabel = 'Full route';
@@ -526,8 +766,22 @@ function setupHandlers(){
       if(r2 > r1){ pick = repeat; pickedLabel = repeat.label; }
     if(pickedLabel && pickedLabel.startsWith('Repeat')){ el('status').textContent='Chose repeating cycle for higher quanta/hour.'; } else { el('status').textContent=''; }
     }
-    if(!limit){ const res=appendReturnLeg(pick,start,end); renderPlan(res, totals, end, 0, false, pickedLabel); return; }
-    const t=applyTimeBudget(pick,start,end,budgetH,true, /*repeatable*/ pick.key && pick.key.startsWith('pair:') || pick.key && pick.key.startsWith('single:'));
+    
+    // Compare against best subset route by Q/hr
+    if (subsetBest){
+      const sbQ = rate(subsetBest, true);
+      const curQ = rate(pick, true);
+      if (sbQ > curQ){ pick = subsetBest; pickedLabel = subsetBest.label; }
+    }
+if(!limit){ const res=appendReturnLeg(pick,start,end); renderPlan(res, totals, end, 0, false, pickedLabel); return; }
+    const t=applyTimeBudget(
+      pick,
+      start,
+      end,
+      budgetH,
+      true,
+      /* repeatable */ true
+    );
     renderPlan(t, totals, end, budgetH, true, pickedLabel);
   }
   el('clearRoute').addEventListener('click', clearRouteUI);
