@@ -491,15 +491,40 @@ function expandRepeatCycles(res, cycles){
     return {...res, route: out, totalKm, totalTime, totalReward};
   }catch(e){ return res; }
 }
+
 function appendReturnLeg(res, start, end){
+  // Defensive: work on a copy and normalize the tail before appending anything.
   const route = res.route.slice();
+  let totalKm = res.totalKm || 0;
+  let totalTime = res.totalTime || 0;
+
+  // Trim any trailing cycle-reset hops (deadhead/return not going to 'end').
+  while (route.length) {
+    const last = route[route.length - 1];
+    if (last && (last.type === 'return' || last.type === 'deadhead')) {
+      if (end && last.to === end) {
+        // Already ends at end; nothing to add.
+        return {...res, route, totalKm, totalTime};
+      }
+      // Remove the non-end reset hop.
+      route.pop();
+      totalKm  -= (last.km || 0);
+      totalTime-= (last.h  || 0);
+      continue;
+    }
+    break;
+  }
+
+  // If after trimming we're already at end, do nothing.
   const lastStop = route.length ? route[route.length-1].to : start;
-  if(!end || end===lastStop) return res;
-  const su=suBetween(lastStop,end); if(!Number.isFinite(su)) return res;
-  const km=suToKm(su), h=kmToH(km);
+  if (!end || end === lastStop) return {...res, route, totalKm, totalTime};
+
+  // Add a single final return-to-end.
+  const su = suBetween(lastStop, end); if (!Number.isFinite(su)) return {...res, route, totalKm, totalTime};
+  const km = suToKm(su), h = kmToH(km);
   route.push({type:'return', from:lastStop, to:end, su, km, h,
               cargoBeforeMass:0, cargoBeforeVol:0, cargoAfterMass:0, cargoAfterVol:0});
-  return {...res, route, totalKm: res.totalKm+km, totalTime: res.totalTime+h};
+  return {...res, route, totalKm: totalKm + km, totalTime: totalTime + h};
 }
 
 function timeToEnd(from, end){ if(!end) return 0; const su=suBetween(from,end); return kmToH(suToKm(su)); }
@@ -536,7 +561,37 @@ function applyTimeBudget(res, start, end, budgetH, includeReturn, repeatable){
     }
   }
 
-  if(includeReturn){
+  
+  // Trim an unnecessary cycle-reset return at the end.
+  // When planning repeating loops under a time budget, the template route
+  // often ends each cycle with a 'return' back to the loop's start.
+  // If we're done (no next cycle) and we also plan to add a final return
+  // to the user-selected end planet, drop that trailing cycle-reset leg.
+  if (includeReturn && route.length && route[route.length-1].type === 'return'){
+    const last = route[route.length-1];
+    if (last && last.to !== end){
+      route.pop();
+      totalKm -= (last.km || 0);
+      totalTime -= (last.h || 0);
+      // Rewind 'cur' to where we were before that leg
+      cur = last.from;
+    }
+  }
+
+  // --- Trim a trailing cycle-reset hop (deadhead/return) before adding the true final return ---
+  // In repeating plans, each cycle often ends with a hop back to the loop's start (typically 'deadhead').
+  // If we're about to add the final return-to-end leg, drop that last cycle-reset hop to avoid a double-leg.
+  if (includeReturn && route.length) {
+    const last = route[route.length - 1];
+    if (last && (last.type === 'return' || last.type === 'deadhead') && last.to !== end) {
+      route.pop();
+      totalKm  -= (last.km || 0);
+      totalTime-= (last.h  || 0);
+      cur = last.from; // rewind position to before that hop
+    }
+  }
+
+if(includeReturn){
     const rT=timeToEnd(cur, end);
     const su=suBetween(cur, end);
     const km=suToKm(su);
