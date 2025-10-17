@@ -17,6 +17,7 @@ function sizeFromText(o){const hay=`${o.size||''} ${o.size_class||''} ${o.sizeCl
 function coerceMassVol(o){ let mt=Number(o.mass_t); let vk=Number(o.volume_kl); if(!(mt>0)) mt=parseMassT(o.mass||o.massT||o.mass_t); if(!(vk>0)) vk=parseVolkL(o.volume||o.volume_kL||o.volume_kl||o.vol); if(!(mt>0)||!(vk>0)){ const sz=sizeFromText(o); if(sz&&SIZE_MAP[sz]){mt=SIZE_MAP[sz].mass_t; vk=SIZE_MAP[sz].volume_kl;}} o.mass_t=mt>0?mt:0; o.volume_kl=vk>0?vk:0; return o;}
 function fmtQ(n){ return (n||0).toLocaleString('en-US'); }
 function fmtH(h){ const hh=Math.floor(h); const mm=Math.round((h-hh)*60); return `${hh}h ${String(mm).padStart(2,'0')}m`; }
+function fmtKT(tonnes){ const kt=(tonnes||0)/1000; return (Math.round(kt*1000)/1000).toLocaleString('en-US'); }
 function suBetween(a,b){ if(a===b) return 0; return distances[a]?.[b] ?? distances[b]?.[a] ?? Infinity; }
 function suToKm(x){ return x*SU_TO_KM; } function kmToH(km){ return km/SPEED; }
 
@@ -491,40 +492,15 @@ function expandRepeatCycles(res, cycles){
     return {...res, route: out, totalKm, totalTime, totalReward};
   }catch(e){ return res; }
 }
-
 function appendReturnLeg(res, start, end){
-  // Defensive: work on a copy and normalize the tail before appending anything.
   const route = res.route.slice();
-  let totalKm = res.totalKm || 0;
-  let totalTime = res.totalTime || 0;
-
-  // Trim any trailing cycle-reset hops (deadhead/return not going to 'end').
-  while (route.length) {
-    const last = route[route.length - 1];
-    if (last && (last.type === 'return' || last.type === 'deadhead')) {
-      if (end && last.to === end) {
-        // Already ends at end; nothing to add.
-        return {...res, route, totalKm, totalTime};
-      }
-      // Remove the non-end reset hop.
-      route.pop();
-      totalKm  -= (last.km || 0);
-      totalTime-= (last.h  || 0);
-      continue;
-    }
-    break;
-  }
-
-  // If after trimming we're already at end, do nothing.
   const lastStop = route.length ? route[route.length-1].to : start;
-  if (!end || end === lastStop) return {...res, route, totalKm, totalTime};
-
-  // Add a single final return-to-end.
-  const su = suBetween(lastStop, end); if (!Number.isFinite(su)) return {...res, route, totalKm, totalTime};
-  const km = suToKm(su), h = kmToH(km);
+  if(!end || end===lastStop) return res;
+  const su=suBetween(lastStop,end); if(!Number.isFinite(su)) return res;
+  const km=suToKm(su), h=kmToH(km);
   route.push({type:'return', from:lastStop, to:end, su, km, h,
               cargoBeforeMass:0, cargoBeforeVol:0, cargoAfterMass:0, cargoAfterVol:0});
-  return {...res, route, totalKm: totalKm + km, totalTime: totalTime + h};
+  return {...res, route, totalKm: res.totalKm+km, totalTime: res.totalTime+h};
 }
 
 function timeToEnd(from, end){ if(!end) return 0; const su=suBetween(from,end); return kmToH(suToKm(su)); }
@@ -561,37 +537,7 @@ function applyTimeBudget(res, start, end, budgetH, includeReturn, repeatable){
     }
   }
 
-  
-  // Trim an unnecessary cycle-reset return at the end.
-  // When planning repeating loops under a time budget, the template route
-  // often ends each cycle with a 'return' back to the loop's start.
-  // If we're done (no next cycle) and we also plan to add a final return
-  // to the user-selected end planet, drop that trailing cycle-reset leg.
-  if (includeReturn && route.length && route[route.length-1].type === 'return'){
-    const last = route[route.length-1];
-    if (last && last.to !== end){
-      route.pop();
-      totalKm -= (last.km || 0);
-      totalTime -= (last.h || 0);
-      // Rewind 'cur' to where we were before that leg
-      cur = last.from;
-    }
-  }
-
-  // --- Trim a trailing cycle-reset hop (deadhead/return) before adding the true final return ---
-  // In repeating plans, each cycle often ends with a hop back to the loop's start (typically 'deadhead').
-  // If we're about to add the final return-to-end leg, drop that last cycle-reset hop to avoid a double-leg.
-  if (includeReturn && route.length) {
-    const last = route[route.length - 1];
-    if (last && (last.type === 'return' || last.type === 'deadhead') && last.to !== end) {
-      route.pop();
-      totalKm  -= (last.km || 0);
-      totalTime-= (last.h  || 0);
-      cur = last.from; // rewind position to before that hop
-    }
-  }
-
-if(includeReturn){
+  if(includeReturn){
     const rT=timeToEnd(cur, end);
     const su=suBetween(cur, end);
     const km=suToKm(su);
@@ -644,7 +590,9 @@ const tripMeta = (leg.type==='pickup') ? '' : `<div class="meta">${leg.su.toFixe
       meta.textContent = leg.type==='return' ? 'Return-to-end flight' : 'Positioning flight (no cargo change)';
     }
     const before = `${(leg.cargoBeforeVol||0)} kL`; const after  = `${(leg.cargoAfterVol||0)} kL`;
-    cargo.textContent = `Volume: ${before} → ${after}`;
+    const beforeMassKT = fmtKT(leg.cargoBeforeMass||0);
+    const afterMassKT  = fmtKT(leg.cargoAfterMass||0);
+    cargo.innerHTML = `Volume: ${before} → ${after}<br/>Weight: ${beforeMassKT} kT → ${afterMassKT} kT`;
     const side=document.createElement('div'); side.style.textAlign='right';
     if(leg.type==='deliver'){ side.innerHTML = `<div><strong>+${fmtQ(leg.reward||0)} q</strong></div>`; } else { side.innerHTML = `<div>&nbsp;</div>`; }
     div.appendChild(badge); div.appendChild(main); div.appendChild(side); main.appendChild(meta); main.appendChild(cargo); c.appendChild(div);
@@ -652,7 +600,7 @@ const tripMeta = (leg.type==='pickup') ? '' : `<div class="meta">${leg.su.toFixe
   const qph = res.totalReward/Math.max(res.totalTime,0.0001);
   const budgetLine = limited ? `<div>Time budget: <strong>${fmtH(budgetH)}</strong> · Unused: <strong>${fmtH(Math.max(0, budgetH-res.totalTime))}</strong></div>` : '';
   el('summary').innerHTML = `${budgetLine}
-                             <div>Peak volume carried: <strong>${peakVol} kL</strong> (Capacity: ${isFinite(res.limitVol)?res.limitVol:'∞'} kL)</div>
+                             <div>Peak weight carried: <strong>${fmtKT(peakMass)}</strong> kT<br/>Peak volume carried: <strong>${peakVol} kL</strong> (Capacity: ${isFinite(res.limitVol)?res.limitVol:'∞'} kL)</div>
                              <div>Total distance: <strong>${Math.round(res.totalKm).toLocaleString('en-US')} km</strong> (${Math.round(res.totalKm/200).toLocaleString('en-US')} SU)</div>
                              <div>Total flight time: <strong>${fmtH(res.totalTime)}</strong></div>
                              <div>Total reward: <strong>${fmtQ(res.totalReward)} q</strong> · Effective <strong>${fmtQ(Math.round(qph))} q/hr</strong></div>
