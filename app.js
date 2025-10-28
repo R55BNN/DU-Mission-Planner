@@ -170,7 +170,7 @@ function updateSelCount(){
   el('selCount').textContent = `${selectedIds.size} selected of ${filtered.length} shown (${missions.length} total) — ${fmtQ(sumR)} q reward, ${fmtQ(sumC)} q collateral`;
   const hasSel = selectedIds.size>0;
   el('planQph').disabled = !hasSel;
-  el('exportCsv').disabled = !hasSel;
+  (function(){var _b=el('exportCsv'); if(_b) _b.disabled=!hasSel; })();
 }
 
 function applySearch(q){

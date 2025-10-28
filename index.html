@@ -101,13 +101,18 @@
   </label>
 </div>
 <button id="planQph" class="secondary">Plan Route</button>
-      <button id="exportCsv" class="ghost">Export CSV (selected)</button>
+<button id="exportCsv" style="display:none" class="ghost">Export CSV (selected)</button>
+      
       <span id="status"></span>
     </div>
   </section>
 
   <section id="results" class="panel hidden">
+      <div class="row between">
     <h2>Route</h2>
+  <button id="exportRoute" class="ghost" disabled>Export Route</button>
+</div>
+
     <div id="route"></div>
     <div id="summary"></div>
     <div id="warning" class="warn hidden"></div>
@@ -118,5 +123,6 @@
 </footer>
 
   <script src="app.js"></script>
+  <script src="export.js"></script>
 </body>
 </html>
