@@ -1,5 +1,61 @@
 // export.js — single Export Route (comma CSV) with metadata header and totals
 (function(){
+  
+  // === Inject "Show selected only" button and filter logic ===
+  function ensureSelectedFilterUI(){
+    try{
+      const list = document.getElementById('missionList');
+      if (!list) return;
+      // Find the row containing Select all / Clear selection
+      const selectAllBtn = document.getElementById('selectAll');
+      const row = selectAllBtn ? selectAllBtn.parentElement : null;
+      if (!row) return;
+
+      // If button already exists, do nothing
+      if (document.getElementById('showSelectedOnly')) return;
+
+      const btn = document.createElement('button');
+      btn.id = 'showSelectedOnly';
+      btn.className = 'ghost';
+      btn.type = 'button';
+      btn.setAttribute('aria-pressed', 'false');
+      btn.textContent = 'Show selected only';
+      row.insertBefore(btn, row.lastElementChild); // before the selCount span
+
+      let showOnly = false;
+      function applyFilter(){
+        const children = Array.from(list.children);
+        for (const el of children){
+          const cb = el.querySelector && el.querySelector('input[type="checkbox"]');
+          if (!cb) continue;
+          if (showOnly && !cb.checked){
+            el.style.display = 'none';
+          }else{
+            el.style.display = '';
+          }
+        }
+        btn.setAttribute('aria-pressed', String(showOnly));
+        btn.textContent = showOnly ? 'Show all missions' : 'Show selected only';
+      }
+
+      btn.addEventListener('click', ()=>{ showOnly = !showOnly; applyFilter(); });
+
+      // If the user changes any checkbox while filtered, keep the view in sync
+      list.addEventListener('change', (e)=>{
+        if (e && e.target && e.target.matches && e.target.matches('input[type="checkbox"]')){
+          applyFilter();
+        }
+      });
+
+      // Observe re-renders of the list to reapply the filter
+      const obs = new MutationObserver(()=>applyFilter());
+      obs.observe(list, {childList:true});
+
+      // Initial pass
+      applyFilter();
+    }catch(e){ /* no-op */ }
+  }
+
   function hookRender(){
     if (!window.renderPlan || window.renderPlan.__duHooked) return;
     const orig = window.renderPlan;
@@ -103,8 +159,7 @@
     });
   }
 
-  document.addEventListener('DOMContentLoaded', ()=>{
-    hookRender(); bindExport();
+  document.addEventListener('DOMContentLoaded', ()=>{ hookRender(); bindExport(); ensureSelectedFilterUI();
     setTimeout(()=>{ hookRender(); bindExport(); }, 200);
   });
 })();
