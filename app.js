@@ -58,7 +58,7 @@ function computeBestRepeating(start, chosen){
                 deltaMass:-(m.mass_t||0), deltaVol:-(m.volume_kl||0), cargoBeforeVol:(m.volume_kl||0), cargoAfterVol:0});
     // deadhead back
     route.push({type:'deadhead', from:D, to:P, su:suDP, km:kmBack, h:hBack, cargoBeforeVol:0, cargoAfterVol:0});
-    return {route, totalKm: kmLeg+kmBack, totalTime: hLeg+hBack, totalReward: reward, cycleH, cycleReward: reward, label:`Repeat: ${m.name}`, key:`single:${P}→${D}`};
+    return {route, totalKm: kmLeg+kmBack, totalTime: hLeg+hBack, totalReward: reward, cycleH, cycleReward: reward, label:`Repeat: ${m.name}`, key:`single:${P}→${D}`, missionsUsed:[m]};
   }
   function cycleForPair(m1, m2){
     const P = m1.pickupPlanet, D = m1.dropPlanet; // m2 should be D->P
@@ -89,7 +89,7 @@ function computeBestRepeating(start, chosen){
     // deliver B back to P
     route.push({type:'deliver', missions:[m2], from:D, to:P, su:suDP, km:kmDP, h:hDP, reward:(m2.reward||0),
                 deltaMass:-(m2.mass_t||0), deltaVol:-(m2.volume_kl||0), cargoBeforeVol:(m2.volume_kl||0), cargoAfterVol:0});
-    return {route, totalKm: kmPD+kmDP, totalTime: hPD+hDP, totalReward: reward, cycleH, cycleReward: reward, label:`Repeat Pair: ${m1.name} ↔ ${m2.name}`, key:`pair:${P}↔${D}`};
+    return {route, totalKm: kmPD+kmDP, totalTime: hPD+hDP, totalReward: reward, cycleH, cycleReward: reward, label:`Repeat Pair: ${m1.name} ↔ ${m2.name}`, key:`pair:${P}↔${D}`, missionsUsed:[m1,m2]};
   }
 
   let best = null, bestQph = -1;
@@ -750,16 +750,16 @@ function planBestQph(){
     const chosen=getChosen(); if(!chosen.length){ el('status').textContent='Select at least one mission.'; return; }
     const start=el('startPlanet').value; const end=el('endPlanet').value;
     const budgetH=parseFloat(el('timeBudget').value); const limit=el('limitTime').checked && isFinite(budgetH) && budgetH>0;
-    const totals={ totalCollateral: chosen.reduce((a,m)=>a+(m.collateral||0),0), count:chosen.length };
+
     let base=planCollectOptimized(start, chosen);
     const subsetBest = bestSubsetByQph(start, chosen);
-
     const repeat = computeBestRepeating(start, chosen);
+
     // Decide which strategy yields higher q/hr
     let pick = base, pickedLabel = 'Full route';
     function rate(res, includeReturn){
       const endPlanet = el('endPlanet').value;
-      const returnH = includeReturn ? timeToEnd(res.route.length? res.route[res.route.length-1].to : start, endPlanet) : 0;
+      const returnH = includeReturn ? timeToEnd(res.route.length ? res.route[res.route.length-1].to : start, endPlanet) : 0;
       const t = res.totalTime + returnH;
       return t>0 ? (res.totalReward / t) : 0;
     }
@@ -767,16 +767,35 @@ function planBestQph(){
       const r1 = rate(base, true);
       const r2 = (repeat.cycleReward / repeat.cycleH); // steady-state
       if(r2 > r1){ pick = repeat; pickedLabel = repeat.label; }
-    if(pickedLabel && pickedLabel.startsWith('Repeat')){ el('status').textContent='Chose repeating cycle for higher quanta/hour.'; } else { el('status').textContent=''; }
+      if(pickedLabel && pickedLabel.startsWith('Repeat')){
+        el('status').textContent='Using repeating loop plan for higher quanta/hour.';
+      } else {
+        el('status').textContent='';
+      }
     }
-    
+
     // Compare against best subset route by Q/hr
     if (subsetBest){
       const sbQ = rate(subsetBest, true);
       const curQ = rate(pick, true);
       if (sbQ > curQ){ pick = subsetBest; pickedLabel = subsetBest.label; }
     }
-if(!limit){ const res=appendReturnLeg(pick,start,end); renderPlan(res, totals, end, 0, false, pickedLabel); return; }
+
+    // Decide which missions are actually being run for totals/collateral
+    let missionsForTotals = chosen;
+    if (pick && Array.isArray(pick.missionsUsed) && pick.missionsUsed.length){
+      missionsForTotals = pick.missionsUsed;
+    }
+    const totals={
+      totalCollateral: missionsForTotals.reduce((a,m)=>a+(m.collateral||0),0),
+      count: missionsForTotals.length
+    };
+
+    if(!limit){
+      const res=appendReturnLeg(pick,start,end);
+      renderPlan(res, totals, end, 0, false, pickedLabel);
+      return;
+    }
     const t=applyTimeBudget(
       pick,
       start,
@@ -787,7 +806,8 @@ if(!limit){ const res=appendReturnLeg(pick,start,end); renderPlan(res, totals, e
     );
     renderPlan(t, totals, end, budgetH, true, pickedLabel);
   }
-  el('clearRoute').addEventListener('click', clearRouteUI);
+
+el('clearRoute').addEventListener('click', clearRouteUI);
   el('exportCsv').addEventListener('click', ()=>{
     const src=getChosen(); if(!src.length){ el('status').textContent='Select at least one mission to export.'; return; }
     const rows=[['Name','From','To','Reward (q)','Collateral (q)','Vol (kL)','Size']];
