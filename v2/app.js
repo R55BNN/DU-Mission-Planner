@@ -19,7 +19,7 @@ function fmtQ(n){ return (n||0).toLocaleString('en-US'); }
 function fmtH(h){ const hh=Math.floor(h); const mm=Math.round((h-hh)*60); return `${hh}h ${String(mm).padStart(2,'0')}m`; }
 function fmtKT(tonnes){ const kt=(tonnes||0)/1000; return (Math.round(kt*1000)/1000).toLocaleString('en-US'); }
 function suBetween(a,b){ if(a===b) return 0; return distances[a]?.[b] ?? distances[b]?.[a] ?? Infinity; }
-function suToKm(x){ return x*SU_TO_KM; } function kmToH(km){ return km/SPEED; }
+function suToKm(x){ return x*SU_TO_KM; } function kmToH(km){ const speed=Number(document.getElementById('tv-ship-speed')?.value); return km/(Number.isFinite(speed)&&speed>0?speed:SPEED); }
 
 // ---------- Repeat-cycle evaluator (single mission loop or reciprocal pair) ----------
 function computeBestRepeating(start, chosen){
