@@ -25,3 +25,6 @@ body.tv-v2.theme-light .tv-topbar{background:#fff;border-color:#d8e1e8}body.tv-v
 @media(max-width:1400px){.tv-workspace{grid-template-columns:minmax(250px,290px) minmax(330px,1fr) minmax(265px,315px);gap:10px}.tv-dashboard{padding:16px}.tv-v2 .tv-map-frame{height:520px}}
 @media(max-width:1100px){.tv-workspace{grid-template-columns:minmax(240px,290px) minmax(0,1fr)}.tv-results-column{grid-column:1/-1}.tv-results-panel{min-height:200px}.tv-results-panel #route{max-height:500px}.tv-v2 .tv-map-frame{height:510px}}
 @media(max-width:680px){.tv-topbar{padding:10px 12px;gap:8px;align-items:flex-start}.tv-brand-text span{font-size:12px;white-space:normal}.tv-brand-text small{font-size:8px}.tv-brand-logo{height:36px}.tv-topbar-actions{gap:5px}.tv-nav-link,.tv-partner{display:none}.tv-topbar #themeToggle{min-width:65px;padding:5px;font-size:11px}.tv-dashboard{padding:12px}.tv-intro{align-items:flex-start}.tv-build-tag{font-size:8px;padding:5px}.tv-workspace{display:flex;flex-direction:column}.tv-sidebar,.tv-map-column,.tv-results-column{width:100%}.tv-v2 .tv-map-frame{height:370px}.tv-map-note{flex-direction:column;align-items:flex-start;gap:4px}.tv-missions-panel{padding:12px!important}.tv-v2 .tv-map-header h2{font-size:12px}}
+
+/* Fixed map overrides previous dashboard height rules */
+.tv-v2 .tv-map-frame{height:auto!important;min-height:0!important}
