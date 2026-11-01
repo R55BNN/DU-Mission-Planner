@@ -164,7 +164,7 @@ function renderList(){
 }
 
 function updateSelCount(){
-  const byId = new Map(filtered.map(m=> [m.id, m]));
+  const byId = new Map(missions.map(m=> [m.id, m]));
   let sumR=0, sumC=0;
   for (const id of selectedIds){ const m=byId.get(id); if (m){ sumR+=(m.reward||0); sumC+=(m.collateral||0); } }
   el('selCount').textContent = `${selectedIds.size} selected of ${filtered.length} shown (${missions.length} total) — ${fmtQ(sumR)} q reward, ${fmtQ(sumC)} q collateral`;
@@ -175,12 +175,24 @@ function updateSelCount(){
 
 function applySearch(q){
   const s=(q||'').toLowerCase().trim();
-  if(!s){ filtered=missions.slice(); return; }
   const tokens=s.split(/\s+/).filter(Boolean);
+  const pickup=el('tv-filter-from')?.value||'';
+  const delivery=el('tv-filter-to')?.value||'';
+  const minReward=Math.max(0,Number(el('tv-filter-min')?.value)||0);
+  const onlySelected=!!el('tv-filter-selected')?.checked;
+  const sort=el('tv-filter-sort')?.value||'default';
   filtered=missions.filter(m=>{
+    if(pickup && m.pickupPlanet!==pickup) return false;
+    if(delivery && m.dropPlanet!==delivery) return false;
+    if((m.reward||0)<minReward) return false;
+    if(onlySelected && !selectedIds.has(m.id)) return false;
     const hay=`${m.name||''} ${m.pickupPlanet||''} ${m.dropPlanet||''} ${m.size_class||''} ${m.reward||0} ${m.collateral||0}`.toLowerCase();
-    return tokens.every(t=> hay.includes(t));
+    return tokens.every(t=>hay.includes(t));
   });
+  if(sort==='rewardDesc')filtered.sort((a,b)=>(b.reward||0)-(a.reward||0));
+  else if(sort==='rewardAsc')filtered.sort((a,b)=>(a.reward||0)-(b.reward||0));
+  else if(sort==='volumeAsc')filtered.sort((a,b)=>(a.volume_kl||0)-(b.volume_kl||0));
+  else if(sort==='name')filtered.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
 }
 
 function useBaked(){
@@ -689,9 +701,28 @@ function planFullRoute(){
   renderPlan(trimmed, totals, end, budgetH, true, 'Full route');
 }
 function setupHandlers(){
+  // V2 mission filters: preserve original mission selection and optimiser calculations.
+  const fromFilter=el('tv-filter-from'),toFilter=el('tv-filter-to');
+  for(const [select,key] of [[fromFilter,'pickupPlanet'],[toFilter,'dropPlanet']]){
+    if(!select) continue;
+    [...new Set(missions.map(m=>m[key]).filter(Boolean))].sort().forEach(name=>{
+      const opt=document.createElement('option');opt.value=opt.textContent=name;select.appendChild(opt);
+    });
+  }
+  for(const id of ['tv-filter-from','tv-filter-to','tv-filter-min','tv-filter-sort','tv-filter-selected']){
+    const input=el(id);if(!input)continue;
+    input.addEventListener(input.tagName==='INPUT'&&input.type==='number'?'input':'change',()=>{
+      applySearch(el('searchBox').value);renderList();
+    });
+  }
+  el('tv-filter-reset')?.addEventListener('click',()=>{
+    for(const id of ['tv-filter-from','tv-filter-to','tv-filter-min'])el(id).value='';
+    el('tv-filter-sort').value='default';el('tv-filter-selected').checked=false;el('searchBox').value='';
+    applySearch('');renderList();
+  });
   el('searchBox').addEventListener('input', (e)=>{ applySearch(e.target.value); renderList(); });
-  el('selectAll').addEventListener('click', ()=>{ filtered.forEach(m=> selectedIds.add(m.id)); renderList(); });
-  el('clearSelection').addEventListener('click', ()=>{ selectedIds.clear(); renderList(); });
+  el('selectAll').addEventListener('click', ()=>{ filtered.forEach(m=> selectedIds.add(m.id)); applySearch(el('searchBox').value); renderList(); });
+  el('clearSelection').addEventListener('click', ()=>{ selectedIds.clear(); applySearch(el('searchBox').value); renderList(); });
 
   
 function bestSubsetByQph(start, chosen){
@@ -807,6 +838,8 @@ function planBestQph(){
     );
     renderPlan(t, totals, end, budgetH, true, pickedLabel);
   }
+
+window.TerraVersePlannerComparison={getChosen,planCollectOptimized,bestSubsetByQph,computeBestRepeating,appendReturnLeg,applyTimeBudget,renderPlan,fmtQ,fmtH};
 
 el('clearRoute').addEventListener('click', clearRouteUI);
   el('exportCsv').addEventListener('click', ()=>{
