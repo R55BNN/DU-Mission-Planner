@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="styles.css" />
 <link rel="stylesheet" href="terraverse-map.css" />
 <link rel="stylesheet" href="dashboard-v2.css" />
+<link rel="stylesheet" href="mission-enhancements.css" />
 </head>
 <body class="tv-v2">
 <header class="tv-topbar">
@@ -127,6 +128,12 @@
 
     </aside>
   </div>
+<section id="tv-comparison" class="panel tv-comparison-panel" aria-labelledby="tv-comparison-title">
+  <div class="tv-section-head"><span class="tv-section-num">04</span><div><h2 id="tv-comparison-title">Route Comparison</h2><p>Compare complete routes, higher-yield subsets and repeating loop potential</p></div></div>
+  <p id="tv-compare-empty" class="tv-compare-placeholder">Select missions and run Plan Route to compare strategies.</p>
+  <div id="tv-compare-options" class="tv-comparison-grid" hidden></div>
+  <p id="tv-compare-note" class="tv-compare-note" hidden>Reward, flight time and distance include the return leg where applicable. Repeat-loop q/hr is steady-state throughput, so it is not directly comparable to a one-time mission reward. Existing planner travel assumptions apply.</p>
+</section>
   <section id="tv-missions" class="panel tv-missions-panel" aria-label="Mission database">
     <div class="tv-section-head"><span class="tv-section-num">03</span><div><h2>Mission Database</h2><p>Select and filter contracts before planning</p></div></div>
         <div class="field">
@@ -141,7 +148,15 @@
         <button id="clearRoute" class="ghost">Clear route</button>
         <span id="selCount" class="muted"></span>
       </div>
-      <div id="missionList" class="list"></div>
+      <div class="tv-filter-bar" aria-label="Advanced mission filters">
+  <div class="tv-filter-field"><label for="tv-filter-from">Pickup planet</label><select id="tv-filter-from"><option value="">All planets</option></select></div>
+  <div class="tv-filter-field"><label for="tv-filter-to">Delivery planet</label><select id="tv-filter-to"><option value="">All planets</option></select></div>
+  <div class="tv-filter-field"><label for="tv-filter-min">Minimum reward (q)</label><input id="tv-filter-min" type="number" min="0" step="100000" placeholder="Any reward"></div>
+  <div class="tv-filter-field"><label for="tv-filter-sort">Sort missions</label><select id="tv-filter-sort"><option value="default">Original order</option><option value="rewardDesc">Reward: highest first</option><option value="rewardAsc">Reward: lowest first</option><option value="volumeAsc">Cargo volume: smallest first</option><option value="name">Mission name: A–Z</option></select></div>
+  <label class="tv-filter-check"><input type="checkbox" id="tv-filter-selected"> Selected only</label>
+  <button type="button" class="ghost" id="tv-filter-reset">Reset filters</button>
+</div>
+<div id="missionList" class="list"></div>
     </div>
 
 
@@ -151,5 +166,6 @@
 <script src="terraverse-map.js"></script>
 <script src="app.js"></script>
 <script src="export.js"></script>
+<script src="mission-enhancements.js"></script>
 </body>
 </html>
