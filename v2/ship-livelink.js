@@ -69,7 +69,6 @@ function liveStatus(state,detail){
  $("tv-live-indicator").classList.toggle("connected",state==="Connected");
  $("tv-live-indicator").classList.toggle("stale",state==="Stale");
 }
-function field(...keys){for(const key of keys)if(typeof key==="string")return key;return undefined;}
 function receive(raw){
  let payload;try{payload=JSON.parse(typeof raw==="string"?raw:String(raw));}catch(e){liveStatus("Invalid data","Message was not valid JSON.");return;}
  if(!payload||typeof payload!=="object"||Array.isArray(payload))return;
@@ -94,7 +93,7 @@ function connect(){
  try{
   disconnect();liveStatus("Connecting","Attempting secure WebSocket connection…");
   const socket=new WebSocket(url);ws=socket;
-  socket.onopen=()=>{if(ws===socket)liveStatus("Connected","Socket open; waiting for compatible JSON telemetry.");};
+  socket.onopen=()=>{if(ws===socket)liveStatus("Waiting for data","Socket open; waiting for compatible JSON telemetry.");};
   socket.onmessage=e=>{if(ws===socket&&typeof e.data==="string")receive(e.data);};
   socket.onerror=()=>{if(ws===socket)liveStatus("Error","Connection failed. Check that your secure telemetry bridge is running and reachable.");};
   socket.onclose=()=>{if(ws===socket){ws=null;liveStatus("Offline","Connection closed. Data shown may be stale.");}};
