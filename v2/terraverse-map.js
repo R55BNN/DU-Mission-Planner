@@ -1,10 +1,11 @@
 (function(){
 "use strict";
 const NS="http://www.w3.org/2000/svg";
+// Compact cartographic positions only; actual DU coordinates remain in world.
 const layout={
-"Sicari":[321,77],"Sinnen":[382,147],"Teoma":[72,463],"Lacobus":[341,357],
-"Thades":[549,418],"Madis":[572,446],"Alioth":[739,422],"Talemai":[645,567],
-"Symeon":[821,330],"Ion":[879,327],"Feli":[963,829],"Jago":[1453,569]};
+"Sicari":[315,101],"Sinnen":[355,137],"Teoma":[170,365],"Lacobus":[328,280],
+"Thades":[470,331],"Madis":[517,372],"Alioth":[635,330],"Talemai":[570,478],
+"Symeon":[727,240],"Ion":[791,241],"Feli":[800,545],"Jago":[952,381]};
 const world={
 "Madis":[17465536,22665536,-34464],"Alioth":[-8,-8,-126303],"Thades":[29165536,10865536,65536],
 "Talemai":[-13234464,55765536,465536],"Sicari":[52765536,27165536,52065536],
@@ -59,7 +60,7 @@ function plot(result){
   node("title",{},path).textContent="Leg "+(index+1)+": "+leg.from+" to "+leg.to;
   const badge=node("g",{class:"tv-leg-badge","data-leg":index},routeLayer);
   const labelX=mx,labelY=my;
-  node("circle",{cx:labelX,cy:labelY,r:16},badge);
+  node("circle",{cx:labelX,cy:labelY,r:18},badge);
   const number=node("text",{x:labelX,y:labelY+5,"text-anchor":"middle"},badge);number.textContent=index+1;
   let row=null;
   if(list){
@@ -91,8 +92,8 @@ svg=document.getElementById("tv-system-map");if(!svg)return;
 const defs=node("defs");
 const arrow=node("marker",{id:"tv-route-arrow",viewBox:"0 0 12 12",refX:10,refY:6,markerWidth:8,markerHeight:8,orient:"auto",markerUnits:"userSpaceOnUse"},defs);
 node("path",{d:"M1 1L11 6L1 11Z",fill:"#ffc38b"},arrow);
-const grid=node("pattern",{id:"tv-map-grid",width:235,height:235,patternUnits:"userSpaceOnUse"},defs);
-node("path",{d:"M235 0H0V235",fill:"none",stroke:"#6889a0","stroke-opacity":".13"},grid);
+const grid=node("pattern",{id:"tv-map-grid",width:176,height:176,patternUnits:"userSpaceOnUse"},defs);
+node("path",{d:"M176 0H0V176",fill:"none",stroke:"#6889a0","stroke-opacity":".13"},grid);
 const planet=node("radialGradient",{id:"tv-planet-core",cx:"28%",cy:"24%",r:"78%"},defs);
 for(const [offset,color] of [["0%","#d2efff"],["32%","#639bc9"],["70%","#244c72"],["100%","#081d36"]])node("stop",{offset,"stop-color":color},planet);
 const haze=node("radialGradient",{id:"tv-stellar-haze"},defs);
@@ -103,19 +104,19 @@ const vignette=node("radialGradient",{id:"tv-map-vignette",cx:"50%",cy:"49%",r:"
 node("stop",{offset:"45%","stop-color":"#06101a","stop-opacity":"0"},vignette);
 node("stop",{offset:"100%","stop-color":"#00040a","stop-opacity":".75"},vignette);
 baseLayer=node("g",{class:"tv-map-background"});
-node("rect",{width:1569,height:959,fill:"#030b14"},baseLayer);
-node("ellipse",{cx:390,cy:660,rx:650,ry:560,fill:"url(#tv-stellar-haze)"},baseLayer);
-node("ellipse",{cx:1140,cy:180,rx:560,ry:420,fill:"url(#tv-stellar-haze)",opacity:".8"},baseLayer);
+node("rect",{width:1100,height:680,fill:"#030b14"},baseLayer);
+node("ellipse",{cx:345,cy:485,rx:510,ry:410,fill:"url(#tv-stellar-haze)"},baseLayer);
+node("ellipse",{cx:870,cy:150,rx:400,ry:320,fill:"url(#tv-stellar-haze)",opacity:".8"},baseLayer);
 const dust=node("g",{opacity:".78"},baseLayer);
 for(let i=0;i<1850;i++){
- let x=(i*263.791+73)%1569,y=(i*149.377+31)%959;
- if(i<690){x=(i*137.17+23)%1569;y=(.57*x+167+Math.sin(i*17.13)*92+959)%959;}
+ let x=(i*263.791+73)%1100,y=(i*149.377+31)%680;
+ if(i<690){x=(i*137.17+23)%1100;y=(.57*x+113+Math.sin(i*17.13)*72+680)%680;}
  const rare=i%57===0,r=rare?1.65:i%11===0?1.05:.43;
  node("circle",{cx:x,cy:y,r,fill:i%17===0?"#e3ab7a":i%9===0?"#7fb6e9":"#d2e0ef",opacity:rare?.9:i%8===0?.67:.27},dust);
 }
-node("rect",{width:1569,height:959,fill:"url(#tv-map-grid)"},baseLayer);
-node("rect",{width:1569,height:959,fill:"url(#tv-map-vignette)"},baseLayer);
-node("path",{d:"M0 480H1569 M784 0V959",fill:"none",stroke:"#7a9bb0","stroke-opacity":".09","stroke-dasharray":"3 12"},baseLayer);
+node("rect",{width:1100,height:680,fill:"url(#tv-map-grid)"},baseLayer);
+node("rect",{width:1100,height:680,fill:"url(#tv-map-vignette)"},baseLayer);
+node("path",{d:"M0 340H1100 M550 0V680",fill:"none",stroke:"#7a9bb0","stroke-opacity":".09","stroke-dasharray":"3 12"},baseLayer);
 routeLayer=node("g",{class:"tv-route-layer"});
 const markerLayer=node("g");
 for(const [name,p] of Object.entries(layout)){
@@ -123,8 +124,8 @@ const group=node("g",{class:"tv-body","data-name":name,role:"button",tabindex:0,
 node("circle",{cx:p[0],cy:p[1],r:17,class:"tv-marker-halo"},group);
 node("circle",{cx:p[0],cy:p[1],r:11.5,fill:"url(#tv-planet-core)",stroke:"#a1cee8","stroke-width":1.2},group);
 node("path",{d:"M "+(p[0]-12)+" "+(p[1]+4)+" Q "+p[0]+" "+(p[1]+11)+" "+(p[0]+12)+" "+(p[1]+4),fill:"none",stroke:"#83b7d9","stroke-opacity":".65","stroke-width":"1"},group);
-const positions={"Thades":[-12,33],"Madis":[15,42],"Alioth":[15,32],"Symeon":[-27,32],"Ion":[25,34],"Sicari":[-5,30],"Sinnen":[23,35]};
-const off=positions[name]||[0,34];const label=node("text",{x:p[0]+off[0],y:p[1]+off[1],"text-anchor":"middle"},group);label.textContent=name.toUpperCase();
+const positions={"Thades":[-22,42],"Madis":[24,45],"Alioth":[20,44],"Symeon":[-13,43],"Ion":[15,43],"Sicari":[-6,42],"Sinnen":[20,43],"Talemai":[0,43],"Lacobus":[0,43]};
+const off=positions[name]||[0,43];const label=node("text",{x:p[0]+off[0],y:p[1]+off[1],"text-anchor":"middle"},group);label.textContent=name.toUpperCase();
 node("title",{},group).textContent=name;
 group.addEventListener("click",()=>{const select=document.getElementById("startPlanet");if(select&&[...select.options].some(o=>o.value===name)){select.value=name;select.dispatchEvent(new Event("change",{bubbles:true}));}const status=document.getElementById("tv-map-status");if(status)status.textContent=name+" · atlas centre "+world[name].map(Math.round).join(", ")+" m";});
 group.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();group.dispatchEvent(new Event("click"));}});
