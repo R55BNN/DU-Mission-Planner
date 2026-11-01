@@ -193,7 +193,7 @@ function useBaked(){
 }
 
 function getChosen(){ const map=new Map(missions.map(m=>[m.id,m])); return Array.from(selectedIds).map(id=> map.get(id)).filter(Boolean); }
-function clearRouteUI(){ el('route').innerHTML=''; el('summary').innerHTML=''; const w=el('warning'); if(w){w.classList.add('hidden'); w.textContent='';} el('results').classList.add('hidden'); }
+function clearRouteUI(){ el('route').innerHTML=''; el('summary').innerHTML=''; const w=el('warning'); if(w){w.classList.add('hidden'); w.textContent='';} el('results').classList.add('hidden'); window.TerraVerseSystemMap?.clear(); }
 
 // ------- Optimization helpers -------
 function tspOrderFrom(start, nodes){
@@ -606,6 +606,7 @@ const tripMeta = (leg.type==='pickup') ? '' : `<div class="meta">${leg.su.toFixe
                              <div>Total reward: <strong>${fmtQ(res.totalReward)} q</strong> · Effective <strong>${fmtQ(Math.round(qph))} q/hr</strong></div>
                              <div>Total collateral (selected): <strong>${fmtQ(totals.totalCollateral||0)} q</strong> across ${totals.count||0} missions</div>`;
   el('results').classList.remove('hidden');
+   window.TerraVerseSystemMap?.plot(res);
 
   // Capacity warning
   const warnEl = el('warning');
