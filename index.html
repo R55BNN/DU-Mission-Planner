@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Dual Universe Mission Planner</title>
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="terraverse-map.css" />
 </head>
 <body>
   <header>
@@ -107,7 +108,14 @@
     </div>
   </section>
 
-  <section id="results" class="panel hidden">
+  
+<section id="tv-map-panel" class="panel tv-map-panel" aria-label="TerraVerse interactive system map">
+ <div class="tv-map-header"><div><h2>TERRAVERSE SYSTEM MAP</h2><p>12 main planets · No moons, asteroids or influence bubbles</p></div>
+ <div class="tv-map-tools"><button id="tv-map-zoom-in" class="ghost" title="Zoom in" type="button">+</button><button id="tv-map-zoom-out" class="ghost" title="Zoom out" type="button">−</button><button id="tv-map-reset" class="ghost" title="Reset map" type="button">Reset</button></div></div>
+ <div class="tv-map-frame"><svg id="tv-system-map" viewBox="0 0 1569 959" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="12 planets with planned mission route"></svg></div>
+ <div id="tv-map-status" role="status">Select missions and plan a route to display it here.</div>
+</section>
+<section id="results" class="panel hidden">
       <div class="row between">
     <h2>Route</h2>
   <button id="exportRoute" class="ghost" disabled>Export Route</button>
@@ -122,6 +130,7 @@
   <p>Developed by <strong>R55BNN @ TerraVerse Industries</strong></p>
 </footer>
 
+  <script src="terraverse-map.js"></script>
   <script src="app.js"></script>
   <script src="export.js"></script>
 </body>
