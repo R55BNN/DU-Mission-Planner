@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="terraverse-map.css" />
 <link rel="stylesheet" href="dashboard-v2.css" />
 <link rel="stylesheet" href="mission-enhancements.css" />
+<link rel="stylesheet" href="ship-livelink.css" />
 </head>
 <body class="tv-v2">
 <header class="tv-topbar">
@@ -30,7 +31,17 @@
   <div class="tv-intro"><div><span class="tv-eyebrow">TERRAVERSE SYSTEMS / FLIGHT OPERATIONS</span><h1>Mission Control</h1><p>Build your route. Optimise your earnings. See every leg on the system map.</p></div><div class="tv-build-tag">V2.0 · DEVELOPMENT</div></div>
   <div class="tv-workspace">
     <aside class="tv-sidebar">
-      <section class="panel tv-control-panel" aria-label="Route configuration">
+      <section class="panel tv-profile-panel" id="tv-ships">
+<div class="tv-section-head"><span class="tv-section-num">05</span><div><h2>Ship Profiles</h2><p>Save cargo capacity and planning speed</p></div></div>
+<div class="tv-field"><label for="tv-ship-select">Selected ship</label><select id="tv-ship-select" aria-label="Saved ship profile"><option value="">Manual settings</option></select></div>
+<div class="tv-profile-grid">
+<div class="tv-field"><label for="tv-ship-name">Ship name</label><input id="tv-ship-name" maxlength="64" placeholder="e.g. Cargo Hauler" autocomplete="off"></div>
+<div class="tv-field"><label for="tv-ship-speed">Planning speed (km/h)</label><input type="number" id="tv-ship-speed" min="1" max="200000" step="100" value="50000"></div>
+</div>
+<div class="tv-profile-buttons"><button class="ghost" id="tv-ship-save" type="button">Save / Update</button><button class="ghost" id="tv-ship-new" type="button">New</button><button class="ghost" id="tv-ship-delete" type="button">Delete</button></div>
+<div id="tv-ship-message" class="tv-profile-message" role="status">Ship profiles are stored in this browser.</div>
+</section>
+<section class="panel tv-control-panel" aria-label="Route configuration">
         <div class="tv-section-head"><span class="tv-section-num">01</span><div><h2>Route Configuration</h2><p>Set your journey parameters</p></div></div>
             <div class="grid">
       <div class="field">
@@ -113,6 +124,20 @@
  <div id="tv-journey-legs" class="tv-journey-legs" aria-label="Ordered journey legs" hidden></div>
 </section>
 
+      <section class="panel tv-livelink-panel" id="tv-livelink">
+<div class="tv-section-head"><span class="tv-section-num">06</span><div><h2>TerraVerse LiveLink</h2><p>Telemetry connection preview</p></div></div>
+<div class="tv-live-state"><span id="tv-live-indicator" class="tv-live-dot"></span><strong id="tv-live-status">Offline</strong><span id="tv-live-age">No telemetry received</span></div>
+<div class="tv-live-grid">
+<div><span>Ship</span><strong id="tv-live-ship">—</strong></div><div><span>Speed</span><strong id="tv-live-speed">—</strong></div>
+<div><span>Altitude</span><strong id="tv-live-alt">—</strong></div><div><span>Destination</span><strong id="tv-live-dest">—</strong></div>
+</div>
+<details class="tv-live-settings"><summary>Connection settings (experimental)</summary>
+<label for="tv-live-url">Secure WebSocket URL (wss://)</label>
+<input id="tv-live-url" placeholder="wss://your-telemetry-bridge" autocomplete="off" spellcheck="false">
+<div class="tv-profile-buttons"><button id="tv-live-connect" type="button" class="ghost">Connect</button><button id="tv-live-disconnect" type="button" class="ghost">Disconnect</button></div>
+<p id="tv-live-note">Requires a compatible LiveLink bridge that sends JSON over a secure WebSocket. This is not connected to the existing local companion yet.</p>
+</details>
+</section>
       <div class="tv-map-note"><span>● ATLAS ROUTING</span><p>Displayed planet positions follow the approved reference map. Mission calculations still use the existing planner engine.</p></div>
     </div>
     <aside class="tv-results-column">
@@ -169,5 +194,6 @@
 <script src="app.js"></script>
 <script src="export.js"></script>
 <script src="mission-enhancements.js"></script>
+<script src="ship-livelink.js"></script>
 </body>
 </html>
