@@ -1,0 +1,19 @@
+
+/* TerraVerse V2.0 local ship profiles and experimental LiveLink */
+.tv-profile-panel,.tv-livelink-panel{padding:16px!important}
+.tv-profile-panel .tv-section-head,.tv-livelink-panel .tv-section-head{margin-bottom:14px}
+.tv-field{display:flex;flex-direction:column;gap:5px;margin-bottom:10px;min-width:0}
+.tv-field label,.tv-live-settings label{font-size:11px;font-weight:700;color:#aebfcd}
+.tv-field input,.tv-field select,.tv-live-settings input{width:100%;min-width:0;border:1px solid #2c4153;border-radius:7px;background:#0b1622;color:#edf5fc;padding:9px 10px;font-size:12px}
+.tv-profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tv-profile-buttons{display:flex;gap:6px;flex-wrap:wrap}.tv-profile-buttons button{font-size:11px;padding:7px 10px}
+.tv-profile-message{font-size:11px;color:#98aebf;padding-top:9px;min-height:20px}
+.tv-live-state{display:flex;align-items:center;gap:8px;margin:3px 0 12px;font-size:12px;color:#dfeaf5}.tv-live-state #tv-live-age{font-size:10px;color:#8ca3b4;margin-left:auto}
+.tv-live-dot{width:8px;height:8px;border-radius:50%;background:#8b94a2;box-shadow:0 0 0 3px #4b5f6d33}
+.tv-live-dot.connected{background:#43d49d;box-shadow:0 0 8px #43d49d}.tv-live-dot.stale{background:#f3a647}
+.tv-live-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px}.tv-live-grid>div{background:#0b1622;border:1px solid #273e50;border-radius:8px;padding:9px;min-width:0}
+.tv-live-grid span{display:block;font-size:10px;color:#879faf}.tv-live-grid strong{display:block;font-size:12px;color:#f1c08d;overflow-wrap:anywhere}
+.tv-live-settings{border-top:1px solid #283d4d;padding-top:10px}.tv-live-settings summary{cursor:pointer;font-size:11px;font-weight:700;color:#e3a15e;margin-bottom:10px}
+.tv-live-settings input{margin:5px 0 10px}.tv-live-settings p{color:#90a6b8;font-size:10px;line-height:1.5}
+body.tv-v2.theme-light .tv-field input,body.tv-v2.theme-light .tv-field select,body.tv-v2.theme-light .tv-live-settings input,body.tv-v2.theme-light .tv-live-grid>div{background:#f7fafc;color:#183146}
+body.tv-v2.theme-light .tv-live-grid strong{color:#995b28}
+@media(max-width:1100px){.tv-profile-grid{grid-template-columns:1fr}.tv-live-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
