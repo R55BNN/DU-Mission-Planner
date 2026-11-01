@@ -1,0 +1,18 @@
+
+/* TerraVerse V2.0 planetary system map: supplementary to existing planner UI */
+.tv-map-panel{max-width:1150px;margin:16px auto;overflow:hidden;padding:0}
+.tv-map-header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid #2d3843}
+.tv-map-header h2{margin:0;color:#f7a451;font-size:16px}
+.tv-map-header p{font-size:12px;color:#b4c2ce;margin:4px 0 0}
+.tv-map-tools{display:flex;gap:6px}.tv-map-tools button{width:auto;min-width:38px}
+.tv-map-frame{height:470px;background:radial-gradient(ellipse at 18% 84%,#12323a 0,transparent 38%),radial-gradient(ellipse at 54% 26%,#1c2530 0,transparent 42%),#060d15;overflow:hidden}
+#tv-system-map{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#tv-system-map:active{cursor:grabbing}
+.tv-marker-halo{fill:#153e5c;stroke:#4c8eb8;stroke-width:1.2}
+.tv-body{cursor:pointer;outline:0}
+.tv-body text{fill:#c4e5f6;font-size:16px;font-weight:700;paint-order:stroke;stroke:#06101a;stroke-width:5px;stroke-linejoin:round}
+.tv-body:hover .tv-marker-halo,.tv-body:focus .tv-marker-halo,.tv-body.on-route .tv-marker-halo{fill:#e99a45;stroke:#ffcb84}
+.tv-body.on-route text{fill:#ffc58e}
+.tv-travel{stroke:#f59b45;stroke-width:3.2;stroke-dasharray:10 7;stroke-linecap:round;filter:drop-shadow(0 0 4px #b3581d);pointer-events:none}
+#tv-map-status{padding:11px 18px;font-size:12px;color:#bdd0dd;border-top:1px solid #263442}
+@media(max-width:700px){.tv-map-frame{height:350px}.tv-map-header{align-items:flex-start}.tv-map-header h2{font-size:13px}.tv-map-tools{flex-shrink:0}}
