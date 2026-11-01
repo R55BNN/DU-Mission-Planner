@@ -16,3 +16,24 @@
 .tv-travel{stroke:#f59b45;stroke-width:3.2;stroke-dasharray:10 7;stroke-linecap:round;filter:drop-shadow(0 0 4px #b3581d);pointer-events:none}
 #tv-map-status{padding:11px 18px;font-size:12px;color:#bdd0dd;border-top:1px solid #263442}
 @media(max-width:700px){.tv-map-frame{height:350px}.tv-map-header{align-items:flex-start}.tv-map-header h2{font-size:13px}.tv-map-tools{flex-shrink:0}}
+
+/* Flight path order: arrows, sequential leg markers and a selectable itinerary */
+.tv-route-layer{pointer-events:none}
+.tv-leg-path{fill:none;stroke:#ffaf55;stroke-width:4.5;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 4px #ff8e3999);pointer-events:stroke;cursor:pointer;transition:opacity .12s,stroke-width .12s}
+.tv-leg-path.tv-leg-muted{opacity:.2}
+.tv-leg-path.tv-leg-active{stroke:#fff0ca;stroke-width:7;opacity:1}
+.tv-leg-badge{pointer-events:auto;cursor:pointer}
+.tv-leg-badge circle{fill:#f6a248;stroke:#0c1825;stroke-width:3;filter:drop-shadow(0 0 4px #ffb15a77)}
+.tv-leg-badge text{font:bold 16px system-ui,sans-serif;fill:#0e1923;pointer-events:none}
+.tv-leg-badge.tv-leg-active circle{fill:#fff1ca;stroke:#f5a34f}
+.tv-journey-header{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:11px 16px 5px;color:#ecaf6b;font-size:10px;font-weight:800;letter-spacing:.13em;border-top:1px solid #263442}
+.tv-journey-header span+span{font-weight:500;color:#95aabe;letter-spacing:.02em}
+.tv-journey-legs{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:7px;max-height:190px;overflow:auto;padding:9px 15px 14px}
+.tv-journey-legs[hidden]{display:none}
+.tv-journey-step{display:grid;grid-template-columns:31px minmax(0,1fr);column-gap:7px;row-gap:0;align-items:center;text-align:left;background:#0e1c2a!important;border:1px solid #33485b!important;padding:8px 9px!important;border-radius:8px;color:#eaf3fa!important;cursor:pointer;min-width:0}
+.tv-journey-step:hover,.tv-journey-step:focus,.tv-journey-step.tv-leg-active{border-color:#f6a248!important;background:#273241!important}
+.tv-journey-step-number{grid-row:span 2;color:#ffb36c;font-size:16px;font-weight:850}
+.tv-journey-step-route{font-size:11px;font-weight:750;overflow-wrap:anywhere}
+.tv-journey-step-meta{color:#91a8ba;font-size:10px}
+body.tv-v2.theme-light .tv-journey-step{background:#eef3f8!important;color:#17293c!important}
+body.tv-v2.theme-light .tv-journey-step-meta{color:#52687c}
