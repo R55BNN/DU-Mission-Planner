@@ -13,10 +13,8 @@ const world={
 "Ion":[2865536,-99034464,-934464],"Symeon":[14165536,-85634464,-934464],
 "Lacobus":[98865536,-13534464,-934464]};
 const markers={};
-let svg,routeLayer,baseLayer,view={x:0,y:0,w:1569,h:959};
+let svg,routeLayer,baseLayer;
 function node(tag,attributes,parent){const n=document.createElementNS(NS,tag);for(const [k,v] of Object.entries(attributes||{})) n.setAttribute(k,String(v));(parent||svg).appendChild(n);return n;}
-function updateView(){svg.setAttribute("viewBox",[view.x,view.y,view.w,view.h].join(" "));}
-function zoom(factor){const x=view.x+view.w/2,y=view.y+view.h/2;view.w=Math.max(160,Math.min(4707,view.w*factor));view.h=view.w*959/1569;view.x=x-view.w/2;view.y=y-view.h/2;updateView();}
 let currentSegments=[];
 function legList(){return document.getElementById("tv-journey-legs");}
 function setActiveLeg(index,focus=false){
@@ -28,10 +26,8 @@ function setActiveLeg(index,focus=false){
   });
   if(index<0){currentSegments.forEach(e=>e.path.classList.remove("tv-leg-muted"));return;}
   const e=currentSegments[index];if(!e)return;
-  if(focus){
-    const [ax,ay]=layout[e.leg.from], [bx,by]=layout[e.leg.to];
-    view.x=(ax+bx)/2-view.w/2;view.y=(ay+by)/2-view.h/2;updateView();
-  }
+  // Fixed map: selecting a leg only highlights its position.
+
 }
 function clear(){
  currentSegments=[];if(routeLayer)routeLayer.replaceChildren();
@@ -93,20 +89,40 @@ function plot(result){
 function init(){
 svg=document.getElementById("tv-system-map");if(!svg)return;
 const defs=node("defs");
-const arrow=node("marker",{id:"tv-route-arrow",viewBox:"0 0 12 12",refX:10,refY:6,markerWidth:7,markerHeight:7,orient:"auto",markerUnits:"userSpaceOnUse"},defs);
-node("path",{d:"M 1 1 L 11 6 L 1 11 Z",fill:"#ffbd72"},arrow);
-const pat=node("pattern",{id:"tv-map-grid",width:214,height:214,patternUnits:"userSpaceOnUse"},defs);
-node("path",{d:"M214 0H0V214",fill:"none",stroke:"#7799b3","stroke-opacity":".2","stroke-width":1},pat);
-const grad=node("radialGradient",{id:"tv-planet-core",cx:"32%",cy:"30%",r:"75%"},defs);
-node("stop",{offset:"0%", "stop-color":"#d2f2ff"},grad);node("stop",{offset:"45%","stop-color":"#60a9de"},grad);node("stop",{offset:"100%","stop-color":"#15354f"},grad);
-baseLayer=node("g");node("rect",{width:1569,height:959,fill:"url(#tv-map-grid)"},baseLayer);
-for(let i=0;i<470;i++){const x=((i*137.51+31)%1569),y=((i*91.37+37)%959);node("circle",{cx:x,cy:y,r:i%13===0?1.15:.47,fill:i%6===0?"#9bb8ed":"#b4d1dc",opacity:i%7===0?.73:.38},baseLayer);}
+const arrow=node("marker",{id:"tv-route-arrow",viewBox:"0 0 12 12",refX:10,refY:6,markerWidth:8,markerHeight:8,orient:"auto",markerUnits:"userSpaceOnUse"},defs);
+node("path",{d:"M1 1L11 6L1 11Z",fill:"#ffc38b"},arrow);
+const grid=node("pattern",{id:"tv-map-grid",width:235,height:235,patternUnits:"userSpaceOnUse"},defs);
+node("path",{d:"M235 0H0V235",fill:"none",stroke:"#6889a0","stroke-opacity":".13"},grid);
+const planet=node("radialGradient",{id:"tv-planet-core",cx:"28%",cy:"24%",r:"78%"},defs);
+for(const [offset,color] of [["0%","#d2efff"],["32%","#639bc9"],["70%","#244c72"],["100%","#081d36"]])node("stop",{offset,"stop-color":color},planet);
+const haze=node("radialGradient",{id:"tv-stellar-haze"},defs);
+node("stop",{offset:"0%","stop-color":"#458c99","stop-opacity":".22"},haze);
+node("stop",{offset:"65%","stop-color":"#294b6a","stop-opacity":".10"},haze);
+node("stop",{offset:"100%","stop-color":"#09101c","stop-opacity":"0"},haze);
+const vignette=node("radialGradient",{id:"tv-map-vignette",cx:"50%",cy:"49%",r:"70%"},defs);
+node("stop",{offset:"45%","stop-color":"#06101a","stop-opacity":"0"},vignette);
+node("stop",{offset:"100%","stop-color":"#00040a","stop-opacity":".75"},vignette);
+baseLayer=node("g",{class:"tv-map-background"});
+node("rect",{width:1569,height:959,fill:"#030b14"},baseLayer);
+node("ellipse",{cx:390,cy:660,rx:650,ry:560,fill:"url(#tv-stellar-haze)"},baseLayer);
+node("ellipse",{cx:1140,cy:180,rx:560,ry:420,fill:"url(#tv-stellar-haze)",opacity:".8"},baseLayer);
+const dust=node("g",{opacity:".78"},baseLayer);
+for(let i=0;i<1850;i++){
+ let x=(i*263.791+73)%1569,y=(i*149.377+31)%959;
+ if(i<690){x=(i*137.17+23)%1569;y=(.57*x+167+Math.sin(i*17.13)*92+959)%959;}
+ const rare=i%57===0,r=rare?1.65:i%11===0?1.05:.43;
+ node("circle",{cx:x,cy:y,r,fill:i%17===0?"#e3ab7a":i%9===0?"#7fb6e9":"#d2e0ef",opacity:rare?.9:i%8===0?.67:.27},dust);
+}
+node("rect",{width:1569,height:959,fill:"url(#tv-map-grid)"},baseLayer);
+node("rect",{width:1569,height:959,fill:"url(#tv-map-vignette)"},baseLayer);
+node("path",{d:"M0 480H1569 M784 0V959",fill:"none",stroke:"#7a9bb0","stroke-opacity":".09","stroke-dasharray":"3 12"},baseLayer);
 routeLayer=node("g",{class:"tv-route-layer"});
 const markerLayer=node("g");
 for(const [name,p] of Object.entries(layout)){
 const group=node("g",{class:"tv-body","data-name":name,role:"button",tabindex:0,"aria-label":name},markerLayer);
-node("circle",{cx:p[0],cy:p[1],r:12,class:"tv-marker-halo"},group);
-node("circle",{cx:p[0],cy:p[1],r:6.5,fill:"url(#tv-planet-core)",stroke:"#b8e4fb","stroke-width":1.1},group);
+node("circle",{cx:p[0],cy:p[1],r:17,class:"tv-marker-halo"},group);
+node("circle",{cx:p[0],cy:p[1],r:11.5,fill:"url(#tv-planet-core)",stroke:"#a1cee8","stroke-width":1.2},group);
+node("path",{d:"M "+(p[0]-12)+" "+(p[1]+4)+" Q "+p[0]+" "+(p[1]+11)+" "+(p[0]+12)+" "+(p[1]+4),fill:"none",stroke:"#83b7d9","stroke-opacity":".65","stroke-width":"1"},group);
 const positions={"Thades":[-12,33],"Madis":[15,42],"Alioth":[15,32],"Symeon":[-27,32],"Ion":[25,34],"Sicari":[-5,30],"Sinnen":[23,35]};
 const off=positions[name]||[0,34];const label=node("text",{x:p[0]+off[0],y:p[1]+off[1],"text-anchor":"middle"},group);label.textContent=name.toUpperCase();
 node("title",{},group).textContent=name;
@@ -114,14 +130,6 @@ group.addEventListener("click",()=>{const select=document.getElementById("startP
 group.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();group.dispatchEvent(new Event("click"));}});
 markers[name]=group;
 }
-document.getElementById("tv-map-zoom-in")?.addEventListener("click",()=>zoom(.8));
-document.getElementById("tv-map-zoom-out")?.addEventListener("click",()=>zoom(1.25));
-document.getElementById("tv-map-reset")?.addEventListener("click",()=>{view={x:0,y:0,w:1569,h:959};updateView();});
-svg.addEventListener("wheel",e=>{e.preventDefault();zoom(e.deltaY>0?1.12:.89);},{passive:false});
-let drag=null;
-svg.addEventListener("pointerdown",e=>{if(e.target.closest(".tv-body"))return;drag={x:e.clientX,y:e.clientY,ox:view.x,oy:view.y};svg.setPointerCapture(e.pointerId);});
-svg.addEventListener("pointermove",e=>{if(!drag)return;const b=svg.getBoundingClientRect();view.x=drag.ox-(e.clientX-drag.x)*view.w/b.width;view.y=drag.oy-(e.clientY-drag.y)*view.h/b.height;updateView();});
-svg.addEventListener("pointerup",()=>drag=null);svg.addEventListener("pointercancel",()=>drag=null);
 clear();
 }
 window.TerraVerseSystemMap={plot,clear,planetNames:Object.keys(layout),worldCoordinates:world};
