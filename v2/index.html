@@ -1,53 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TerraVerse Mission Planner V2.0 — Test</title>
-  <link rel="stylesheet" href="styles.css" />
-  <link rel="stylesheet" href="terraverse-map.css" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#081019" />
+<title>TerraVerse Mission Planner V2.0 — Development</title>
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="terraverse-map.css" />
+<link rel="stylesheet" href="dashboard-v2.css" />
 </head>
-<body>
-  <header>
-  <div class="theme-toggle" title="Toggle light / dark">
-    <button id="themeToggle" class="ghost">🌙 Dark</button>
+<body class="tv-v2">
+<header class="tv-topbar">
+  <div class="tv-brand">
+    <a href="https://discord.com/channels/1273901912437035033/1412603574348808365/1412603574348808365" target="_blank" rel="noopener noreferrer" aria-label="TerraVerse community">
+      <img src="../assets/Terraverse.png" alt="TerraVerse" class="tv-brand-logo" />
+    </a>
+    <div class="tv-brand-text"><span>TERRAVERSE <em>MISSION PLANNER</em></span><small>MISSION CONTROL · V2.0 TEST BUILD</small></div>
   </div>
-
-  <a class="logo-tl" href="https://discord.com/channels/1273901912437035033/1412603574348808365/1412603574348808365" target="_blank" rel="noopener noreferrer"><img src="../assets/Terraverse.png" alt="TerraVerse Industries" class="logo-terra"/></a>
-
-  <a class="logo-tr" href="https://www.thethirdverse.net/" target="_blank" rel="noopener noreferrer"><img src="../assets/ttv.png" alt="DU TV" class="logo-ttv" /></a>
-
-
-    </div>
-    <h1>Dual Universe Mission Planner</h1>
-  </header>
-
-  
-<section class="panel panel-help">
-  <details id="helpDetails" class="help-collapse">
-    <summary class="help-summary">
-      <span class="pill">Quick Start</span>
-      <span class="hintline">Quick steps</span>
-      <span class="ping"></span>
-      <span class="chev">▼</span>
-    </summary>
-    <div class="qk">
-      <ol class="qksteps">
-        <li><b>Start/End:</b> choose your starting and ending planets.</li>
-        <li><b>Ship volume:</b> set <em>Ship Capacity (kL)</em>. It’s used for warnings; <u>overfilling is allowed</u>.</li>
-        <li><b>Time Budget:</b> set hours then tick the box. The planner adds legs only while <em>elapsed time + a return to your end planet</em> fits the budget; otherwise it stops. The summary shows unused time.</li>
-        <li><b>Select missions:</b> filter with search, then <em>tick the checkboxes</em>. Only selected missions are planned.</li>
-        <li><b>Plan Route:</b> optimizer collects from your current planet and orders drops for best <em>q/hr</em>.</li>
-        <li><b>Fly it:</b> each leg shows volume <em>before → after</em>; red highlight = over capacity. Use <em>Clear route</em> or <em>Export CSV</em> anytime.</li>
-      </ol>
-      <div class="qkmeta">Official DU distances · Speed 50,000 km/h.</div>
-      <div class="sizes">Size map: Small 20 kL · Medium 35 kL · Large 125 kL · Very Large 400 kL.</div>
-    </div>
-</details>
-</section>
-<section class="panel">
-
-    <div class="grid">
+  <div class="tv-topbar-actions">
+    <a href="#tv-map-panel" class="tv-nav-link">System Map</a>
+    <a href="#tv-missions" class="tv-nav-link">Missions</a>
+    <a href="#results" class="tv-nav-link">Route Results</a>
+    <button id="themeToggle" class="ghost" type="button" title="Toggle light or dark theme">🌙 Dark</button>
+    <a class="tv-partner" href="https://www.thethirdverse.net/" target="_blank" rel="noopener noreferrer"><img src="../assets/ttv.png" alt="DU TV" /></a>
+  </div>
+</header>
+<main class="tv-dashboard">
+  <div class="tv-intro"><div><span class="tv-eyebrow">TERRAVERSE SYSTEMS / FLIGHT OPERATIONS</span><h1>Mission Control</h1><p>Build your route. Optimise your earnings. See every leg on the system map.</p></div><div class="tv-build-tag">V2.0 · DEVELOPMENT</div></div>
+  <div class="tv-workspace">
+    <aside class="tv-sidebar">
+      <section class="panel tv-control-panel" aria-label="Route configuration">
+        <div class="tv-section-head"><span class="tv-section-num">01</span><div><h2>Route Configuration</h2><p>Set your journey parameters</p></div></div>
+            <div class="grid">
       <div class="field">
         <label for="startPlanet">Starting planet</label>
         <select id="startPlanet"></select>
@@ -73,22 +57,8 @@
       </div>
     </div>
 
-    <div class="field">
-      <label for="searchBox">Search missions</label>
-      <input id="searchBox" type="text" placeholder="Search (doesn't affect planning)" />
-    </div>
 
-    <div class="field">
-      <div class="row">
-        <button id="selectAll" class="ghost">Select all (filtered)</button>
-        <button id="clearSelection" class="ghost">Clear selection</button>
-        <button id="clearRoute" class="ghost">Clear route</button>
-        <span id="selCount" class="muted"></span>
-      </div>
-      <div id="missionList" class="list"></div>
-    </div>
-
-    <div class="actions">
+            <div class="actions">
       
 <div class="field" id="modeToggle" style="margin:8px 0 6px 0">
   <label style="display:block; margin-bottom:4px; font-weight:600">Routing mode</label>
@@ -106,18 +76,46 @@
       
       <span id="status"></span>
     </div>
-  </section>
 
-  
-<section id="tv-map-panel" class="panel tv-map-panel" aria-label="TerraVerse interactive system map">
+      </section>
+      <section class="panel panel-help tv-quick-help">
+  <details id="helpDetails" class="help-collapse">
+    <summary class="help-summary">
+      <span class="pill">Quick Start</span>
+      <span class="hintline">Quick steps</span>
+      <span class="ping"></span>
+      <span class="chev">▼</span>
+    </summary>
+    <div class="qk">
+      <ol class="qksteps">
+        <li><b>Start/End:</b> choose your starting and ending planets.</li>
+        <li><b>Ship volume:</b> set <em>Ship Capacity (kL)</em>. It’s used for warnings; <u>overfilling is allowed</u>.</li>
+        <li><b>Time Budget:</b> set hours then tick the box. The planner adds legs only while <em>elapsed time + a return to your end planet</em> fits the budget; otherwise it stops. The summary shows unused time.</li>
+        <li><b>Select missions:</b> filter with search, then <em>tick the checkboxes</em>. Only selected missions are planned.</li>
+        <li><b>Plan Route:</b> optimizer collects from your current planet and orders drops for best <em>q/hr</em>.</li>
+        <li><b>Fly it:</b> each leg shows volume <em>before → after</em>; red highlight = over capacity. Use <em>Clear route</em> or <em>Export CSV</em> anytime.</li>
+      </ol>
+      <div class="qkmeta">Official DU distances · Speed 50,000 km/h.</div>
+      <div class="sizes">Size map: Small 20 kL · Medium 35 kL · Large 125 kL · Very Large 400 kL.</div>
+    </div>
+</details>
+</section>
+
+    </aside>
+    <div class="tv-map-column">
+      <section id="tv-map-panel" class="panel tv-map-panel" aria-label="TerraVerse interactive system map">
  <div class="tv-map-header"><div><h2>TERRAVERSE SYSTEM MAP</h2><p>12 main planets · No moons, asteroids or influence bubbles</p></div>
  <div class="tv-map-tools"><button id="tv-map-zoom-in" class="ghost" title="Zoom in" type="button">+</button><button id="tv-map-zoom-out" class="ghost" title="Zoom out" type="button">−</button><button id="tv-map-reset" class="ghost" title="Reset map" type="button">Reset</button></div></div>
  <div class="tv-map-frame"><svg id="tv-system-map" viewBox="0 0 1569 959" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="12 planets with planned mission route"></svg></div>
  <div id="tv-map-status" role="status">Select missions and plan a route to display it here.</div>
 </section>
-<section id="results" class="panel hidden">
+
+      <div class="tv-map-note"><span>● ATLAS ROUTING</span><p>Displayed planet positions follow the approved reference map. Mission calculations still use the existing planner engine.</p></div>
+    </div>
+    <aside class="tv-results-column">
+      <section id="results" class="panel hidden tv-results-panel">
       <div class="row between">
-    <h2>Route</h2>
+    <div class="tv-section-head"><span class="tv-section-num">02</span><div><h2>Optimised Route</h2><p>Flight legs, cargo and earnings</p></div></div>
   <button id="exportRoute" class="ghost" disabled>Export Route</button>
 </div>
 
@@ -126,12 +124,32 @@
     <div id="warning" class="warn hidden"></div>
   </section>
 
-  <footer>
-  <p>Developed by <strong>R55BNN @ TerraVerse Industries</strong></p>
-</footer>
 
-  <script src="terraverse-map.js"></script>
-  <script src="app.js"></script>
-  <script src="export.js"></script>
+    </aside>
+  </div>
+  <section id="tv-missions" class="panel tv-missions-panel" aria-label="Mission database">
+    <div class="tv-section-head"><span class="tv-section-num">03</span><div><h2>Mission Database</h2><p>Select and filter contracts before planning</p></div></div>
+        <div class="field">
+      <label for="searchBox">Search missions</label>
+      <input id="searchBox" type="text" placeholder="Search (doesn't affect planning)" />
+    </div>
+
+    <div class="field">
+      <div class="row">
+        <button id="selectAll" class="ghost">Select all (filtered)</button>
+        <button id="clearSelection" class="ghost">Clear selection</button>
+        <button id="clearRoute" class="ghost">Clear route</button>
+        <span id="selCount" class="muted"></span>
+      </div>
+      <div id="missionList" class="list"></div>
+    </div>
+
+
+  </section>
+</main>
+<footer><p>Developed by <strong>R55BNN @ TerraVerse Industries</strong> · TerraVerse Mission Planner V2.0</p></footer>
+<script src="terraverse-map.js"></script>
+<script src="app.js"></script>
+<script src="export.js"></script>
 </body>
 </html>
