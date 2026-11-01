@@ -154,10 +154,12 @@ function renderList(){
       chk.checked = !chk.checked;
       if (chk.checked) selectedIds.add(id); else selectedIds.delete(id);
       updateSelCount();
+      if(el('tv-filter-selected')?.checked){ applySearch(el('searchBox').value); renderList(); }
     });
     chk.addEventListener('change', ()=>{
       if (chk.checked) selectedIds.add(id); else selectedIds.delete(id);
       updateSelCount();
+      if(el('tv-filter-selected')?.checked){ applySearch(el('searchBox').value); renderList(); }
     });
   });
   updateSelCount();
