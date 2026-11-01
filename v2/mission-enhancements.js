@@ -30,33 +30,24 @@ function build(){
   const result=limited?api.applyTimeBudget(subset,start,end,rawBudget,true,true):api.appendReturnLeg(subset,start,end);
   candidates.push({title:"Best subset by q/hr",detail:used.length+" of "+chosen.length+" selected missions",result,missions:used,selected:false});
  }
- const repeat=api.computeBestRepeating(start,chosen);
- if(repeat&&repeat.cycleH>0){
-  candidates.push({title:"Best repeat cycle",detail:repeat.label||"Steady-state loop",repeat:true,rate:repeat.cycleReward/repeat.cycleH,missions:repeat.missionsUsed||[],selected:false});
- }
  lastStrategies=candidates;
  if(!options)return;
  options.replaceChildren();
  candidates.forEach((entry,index)=>{
-  const s=entry.repeat?null:stats(entry.result);
+  const s=stats(entry.result);
   const card=document.createElement("article");card.className="tv-compare-card";
   const heading=document.createElement("div");heading.className="tv-compare-label";heading.textContent=entry.title;card.appendChild(heading);
   const sub=document.createElement("div");sub.className="tv-compare-sub";sub.textContent=entry.detail;card.appendChild(sub);
-  const values=entry.repeat?[["Loop q/hr",money(entry.rate)],["Per-cycle reward",money(repeat.cycleReward)+" q"],["Cycle flight time",hours(repeat.cycleH)],["Missions in loop",String(entry.missions.length)]]:
-   [["Total reward",money(s.q)+" q"],["Effective q/hr",money(s.rate)],["Flight time",hours(s.h)],["Travel distance",dist(s.k)+" km"]];
+  const values=[["Total reward",money(s.q)+" q"],["Effective q/hr",money(s.rate)],["Flight time",hours(s.h)],["Travel distance",dist(s.k)+" km"]];
   const grid=document.createElement("div");grid.className="tv-compare-stats";
   values.forEach(([label,value])=>{const item=document.createElement("div");item.className="tv-compare-stat";const small=document.createElement("span");small.textContent=label;const strong=document.createElement("strong");strong.textContent=value;item.append(small,strong);grid.appendChild(item);});
   card.appendChild(grid);
-  if(!entry.repeat){
-   const button=document.createElement("button");button.type="button";button.className="ghost";button.textContent="View this route";
-   button.addEventListener("click",()=>{
-     api.renderPlan(entry.result,total(entry.missions),end,limited?rawBudget:0,limited,entry.title);
-     document.querySelectorAll(".tv-compare-card").forEach(c=>c.classList.remove("active"));
-     card.classList.add("active");
-   });card.appendChild(button);
-  }else{
-   const text=document.createElement("div");text.className="tv-compare-sub";text.textContent="Reference throughput only — choose Best q/hr mode to run the optimiser's repeat strategy.";card.appendChild(text);
-  }
+  const button=document.createElement("button");button.type="button";button.className="ghost";button.textContent="View this route";
+  button.addEventListener("click",()=>{
+    api.renderPlan(entry.result,total(entry.missions),end,limited?rawBudget:0,limited,entry.title);
+    document.querySelectorAll(".tv-compare-card").forEach(c=>c.classList.remove("active"));
+    card.classList.add("active");
+  });card.appendChild(button);
   options.appendChild(card);
  });
  options.hidden=false;if(empty)empty.hidden=true;if(note)note.hidden=false;
