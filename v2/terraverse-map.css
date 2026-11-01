@@ -39,7 +39,7 @@ body.tv-v2.theme-light .tv-journey-step{background:#eef3f8!important;color:#1729
 body.tv-v2.theme-light .tv-journey-step-meta{color:#52687c}
 
 /* V2 star-chart refinement: fixed, responsive projection without drag or zoom */
-.tv-v2 .tv-map-frame{position:relative;background:radial-gradient(ellipse at 40% 60%,#102a34 0,#081520 46%,#030a12 100%);height:auto!important;aspect-ratio:1569/959;min-height:0;overflow:hidden}
+.tv-v2 .tv-map-frame{position:relative;background:radial-gradient(ellipse at 40% 60%,#102a34 0,#081520 46%,#030a12 100%);height:auto!important;aspect-ratio:1100/680;min-height:0;overflow:hidden}
 .tv-v2 #tv-system-map{width:100%;height:100%;display:block;cursor:default;touch-action:auto;user-select:none}
 .tv-v2 #tv-system-map:active{cursor:default}
 .tv-v2 .tv-map-header{background:linear-gradient(90deg,#0c1927,#122131);border-bottom:1px solid #274357}
@@ -54,4 +54,12 @@ body.tv-v2.theme-light .tv-journey-step-meta{color:#52687c}
 .tv-leg-badge circle{fill:#ffb367;stroke:#081624;stroke-width:3}
 .tv-leg-badge text{font-size:17px;font-weight:850}
 .tv-map-background{pointer-events:none}
-@media(max-width:700px){.tv-map-live-tag{font-size:8px;padding:5px 7px}.tv-v2 .tv-map-frame{aspect-ratio:1569/1050}.tv-v2 .tv-map-header{gap:8px}.tv-v2 .tv-map-header p{font-size:10px}}
+@media(max-width:700px){.tv-map-live-tag{font-size:8px;padding:5px 7px}.tv-v2 .tv-map-frame{aspect-ratio:1100/740}.tv-v2 .tv-map-header{gap:8px}.tv-v2 .tv-map-header p{font-size:10px}}
+
+/* Compact chart layout — improved planet and route label readability */
+.tv-v2 .tv-map-frame{aspect-ratio:1100/680}
+.tv-body text{font-size:23px;letter-spacing:.6px;stroke-width:5px}
+.tv-leg-badge text{font-size:19px}
+.tv-leg-badge circle{stroke-width:2.5}
+.tv-body .tv-marker-halo{stroke-width:1.4}
+@media(max-width:700px){.tv-v2 .tv-map-frame{aspect-ratio:1100/740}}
